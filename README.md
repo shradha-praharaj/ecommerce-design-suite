@@ -136,5 +136,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Crafted with ❤️ for full-stack e-commerce excellence.
+  Crafted with ❤️ for full-stack e-commerce excellence. Happy coing
 </p>
