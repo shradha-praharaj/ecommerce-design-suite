@@ -21,7 +21,12 @@ aiRouter.post('/chat', async (req, res) => {
     return res.status(400).json({ message: 'Message is required' });
   }
 
-  const userIdStr = req.cookies?.session_user_id;
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : (req.headers['x-user-id'] as string);
+
+  const userIdStr = req.cookies?.session_user_id || headerToken;
   const userId = userIdStr ? parseInt(userIdStr, 10) : null;
 
   try {

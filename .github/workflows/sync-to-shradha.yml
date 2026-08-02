@@ -1,0 +1,44 @@
+name: Sync to Shradha Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Inkxe repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate PAT inside Actions
+        run: |
+          echo "Testing PAT authentication..."
+          curl -H "Authorization: token ${{ secrets.SHRADHA_TOKEN }}" https://api.github.com/user
+
+      - name: Push changes to Shradha repo (PR branch)
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
+          git config --global --unset-all http.https://github.com/.extraheader || true
+          git remote add shradha https://x-access-token:${{ secrets.SHRADHA_TOKEN }}@github.com/shradha-praharaj/ecommerce-design-suite.git
+          BRANCH="sync-$(date +%Y%m%d%H%M%S)"
+          git checkout -b $BRANCH
+          git push shradha $BRANCH --force
+          echo "SYNC_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.SHRADHA_TOKEN }}
+        run: |
+          gh pr create \
+            --repo shradha-praharaj/ecommerce-design-suite \
+            --head shradha-praharaj:${SYNC_BRANCH} \
+            --base main \
+            --title "Sync from Inkxe main" \
+            --body "Automated sync from Inkxe repo"
+

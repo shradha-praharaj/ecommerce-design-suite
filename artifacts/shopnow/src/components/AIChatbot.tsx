@@ -103,6 +103,15 @@ function persistChat(messages: Message[], hasOpened: boolean) {
   } catch {}
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('shopnow_auth_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export function AIChatbot() {
   const { isLoggedIn, userName } = useUser();
   const queryClient = useQueryClient();
@@ -210,7 +219,7 @@ export function AIChatbot() {
       }));
       const res = await fetch(`/api/ai/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify({ message, history }),
       });
@@ -321,7 +330,7 @@ export function AIChatbot() {
     try {
       const res = await fetch('/api/ai/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify({ products: productsToCompare }),
       });
@@ -364,7 +373,7 @@ export function AIChatbot() {
     try {
       const res = await fetch('/api/ai/recommend', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify({
           products: compareData.products,
