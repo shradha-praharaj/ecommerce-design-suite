@@ -89,18 +89,19 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
 
       {/* Nav */}
       <header className="bg-white dark:bg-slate-900 border-b border-[#e8eaf0] dark:border-slate-800 sticky top-0 z-50 shadow-[0_1px_8px_rgba(0,0,0,0.06)] transition-colors">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[72px] sm:h-[76px] flex items-center justify-between gap-2 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-[76px] flex items-center justify-between gap-3 sm:gap-6">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 shrink-0"
+            className="flex items-center gap-2 sm:gap-2.5 shrink-0"
             data-testid="link-home"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Zap size={21} color="white" strokeWidth={2.5} />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Zap size={19} color="white" strokeWidth={2.5} />
             </div>
-            <span className="font-extrabold text-[22px] sm:text-[24px] text-[#1a1a2e] dark:text-white tracking-tight whitespace-nowrap">
-              Shop<span className="text-indigo-500">Now</span>
+            <span className="font-extrabold text-[20px] sm:text-[24px] text-[#1a1a2e] dark:text-white tracking-tight whitespace-nowrap">
+              Shop
+              <span className="text-indigo-600 dark:text-indigo-400">Now</span>
             </span>
           </Link>
 
@@ -124,16 +125,18 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
           </form>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0 relative">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 relative flex-nowrap min-w-0">
             {/* AI Chatbot */}
-            <AIChatbot />
+            <div className="hidden sm:block">
+              <AIChatbot />
+            </div>
 
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
               aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-              className="w-11 h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors cursor-pointer"
+              className="hidden sm:flex shrink-0 w-11 h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 items-center justify-center text-gray-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors cursor-pointer"
               data-testid="button-theme-toggle"
             >
               {theme === 'light' ? (
@@ -206,22 +209,24 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
             ) : (
               <button
                 onClick={() => setLocation('/login')}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-500/20 transition-colors cursor-pointer whitespace-nowrap"
+                className="shrink-0 flex items-center justify-center w-11 h-11 sm:w-auto sm:h-auto gap-1.5 sm:px-4 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-500/20 transition-colors cursor-pointer"
                 data-testid="button-sign-in"
+                aria-label="Sign in"
+                title="Sign in"
               >
-                <LogIn size={13} /> Sign In
+                <LogIn size={17} /> <span className="hidden sm:inline">Sign In</span>
               </button>
             )}
 
             {/* Cart icon */}
             <Link
               href="/cart"
-              className="relative cursor-pointer block"
+              className="relative cursor-pointer block shrink-0"
               data-testid="link-cart"
               aria-label={`Shopping cart${cartCount > 0 ? `, ${cartCount} items` : ''}`}
             >
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border ${
+                className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
                   activePage === 'cart'
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300'

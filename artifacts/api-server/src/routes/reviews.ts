@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { eq, desc, avg, count, and } from 'drizzle-orm';
 import { db, reviewsTable, productsTable } from '@workspace/db';
 import { cacheMiddleware, invalidateCache } from '../middlewares/cache.js';
+import { getAuthUserId } from '../lib/crypto.js';
 
 const TWO_MIN = 2 * 60 * 1000;
 const router = Router();
@@ -77,9 +78,7 @@ router.post('/products/:id/reviews', async (req, res): Promise<void> => {
       ? req.params.id[0]
       : req.params.id;
     const productId = parseInt(rawId, 10);
-    const userId = req.cookies?.session_user_id
-      ? parseInt(req.cookies.session_user_id, 10)
-      : null;
+    const userId = getAuthUserId(req);
 
     console.log('[POST /reviews] Debug:', {
       productId,
@@ -194,9 +193,7 @@ router.put('/products/:id/reviews', async (req, res): Promise<void> => {
       ? req.params.id[0]
       : req.params.id;
     const productId = parseInt(rawId, 10);
-    const userId = req.cookies?.session_user_id
-      ? parseInt(req.cookies.session_user_id, 10)
-      : null;
+    const userId = getAuthUserId(req);
 
     console.log('[PUT /reviews] Debug:', {
       productId,

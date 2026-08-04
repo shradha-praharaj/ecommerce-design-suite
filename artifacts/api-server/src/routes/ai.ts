@@ -6,6 +6,8 @@ import {
 } from '../agents/index.js';
 import { compareProducts, recommendProduct } from '../agents/compare-agent.js';
 
+import { getAuthUserId } from '../lib/crypto.js';
+
 export const aiRouter = Router();
 
 const supervisorAgent = new SupervisorAgent();
@@ -21,13 +23,7 @@ aiRouter.post('/chat', async (req, res) => {
     return res.status(400).json({ message: 'Message is required' });
   }
 
-  const authHeader = req.headers.authorization;
-  const headerToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : (req.headers['x-user-id'] as string);
-
-  const userIdStr = req.cookies?.session_user_id || headerToken;
-  const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+  const userId = getAuthUserId(req);
 
   try {
     const userContext = await loadUserContext(userId);

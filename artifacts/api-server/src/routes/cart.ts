@@ -15,16 +15,17 @@ import {
   setSessionCoupon,
 } from "./session-coupons.js";
 
+import { getAuthUserId } from "../lib/crypto.js";
+
 const router = Router();
 
 function getSessionId(req: Request): string {
-  const cookieUser = req.cookies?.session_user_id;
-  return cookieUser ? `user_${cookieUser}` : "default";
+  const userId = getAuthUserId(req);
+  return userId ? `user_${userId}` : "default";
 }
 
 function getUserId(req: Request): number | null {
-  const cookieUser = req.cookies?.session_user_id;
-  return cookieUser ? parseInt(cookieUser, 10) : null;
+  return getAuthUserId(req);
 }
 
 async function buildCartResponse(

@@ -2,15 +2,16 @@ import { Router } from 'express';
 import { db, ordersTable, orderItemsTable, productsTable } from '@workspace/db';
 import { eq, desc, and } from 'drizzle-orm';
 
+import { getAuthUserId } from '../lib/crypto.js';
+
 export const ordersRouter = Router();
 
 // GET /api/orders — List all orders for logged in user with line items & product snapshots
 ordersRouter.get('/orders', async (req, res) => {
-  const userIdStr = req.cookies?.session_user_id;
-  if (!userIdStr) {
+  const userId = getAuthUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const userId = parseInt(userIdStr, 10);
 
   try {
     const userOrders = await db
@@ -77,11 +78,10 @@ ordersRouter.get('/orders', async (req, res) => {
 
 // GET /api/orders/:id — Detailed view for a single order
 ordersRouter.get('/orders/:id', async (req, res) => {
-  const userIdStr = req.cookies?.session_user_id;
-  if (!userIdStr) {
+  const userId = getAuthUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const userId = parseInt(userIdStr, 10);
   const orderId = parseInt(req.params.id, 10);
 
   if (isNaN(orderId)) {

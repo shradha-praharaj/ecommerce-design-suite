@@ -3,14 +3,14 @@ import { ne, eq } from "drizzle-orm";
 import { db, productsTable, usersTable } from '@workspace/db';
 import { GetPdpRecommendationsParams } from "@workspace/api-zod";
 import { cacheMiddleware } from '../middlewares/cache.js';
+import { getAuthUserId } from '../lib/crypto.js';
 
 const THREE_MIN = 3 * 60 * 1000;
 
 async function getFirstName(req: any): Promise<string> {
-  const userIdStr = req.cookies?.session_user_id;
-  if (!userIdStr) return 'You';
+  const userId = getAuthUserId(req);
+  if (!userId) return 'You';
   try {
-    const userId = parseInt(userIdStr, 10);
     const [user] = await db
       .select({ name: usersTable.name })
       .from(usersTable)

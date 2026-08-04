@@ -12,14 +12,10 @@ import { db, couponsTable, couponRulesTable } from '@workspace/db';
 import { buildQuote } from '../services/pricing.js';
 import type { CartLine } from '../services/pricing.js';
 
+import { getAuthUserId } from '../lib/crypto.js';
+
 export const couponsRouter = Router();
 
-/**
- * GET /coupons/validate?code=GAMING10&cartTotal=50000
- *
- * Validates a coupon without adding it to the cart.
- * Useful for chatbot answers and UI tooltips.
- */
 couponsRouter.get('/coupons/validate', async (req, res): Promise<void> => {
   const { code, cartTotal } = req.query as {
     code?: string;
@@ -33,8 +29,7 @@ couponsRouter.get('/coupons/validate', async (req, res): Promise<void> => {
     return;
   }
 
-  const userIdStr = req.cookies?.session_user_id;
-  const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+  const userId = getAuthUserId(req);
 
   try {
     const [coupon] = await db

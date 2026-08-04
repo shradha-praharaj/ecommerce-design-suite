@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
-import { hashPassword, verifyPassword } from "../lib/crypto";
+import { hashPassword, verifyPassword, signJwtToken, getAuthUserId } from "../lib/crypto.js";
 
 const router = Router();
 const COOKIE_NAME = "session_user_id";
@@ -39,6 +39,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     })
     .returning();
 
+  const token = signJwtToken({ id: newUser.id, email: newUser.email });
+
   const isProd = process.env.NODE_ENV === "production";
   const cookieOptions = {
     httpOnly: true,
@@ -48,13 +50,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     path: "/",
   };
 
-  res.cookie(COOKIE_NAME, String(newUser.id), cookieOptions);
+  res.cookie(COOKIE_NAME, token, cookieOptions);
 
   res.json({
     id: newUser.id,
     name: newUser.name,
     email: newUser.email,
-    token: String(newUser.id),
+    token,
   });
 });
 
@@ -78,6 +80,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  const token = signJwtToken({ id: user.id, email: user.email });
+
   const isProd = process.env.NODE_ENV === "production";
   const cookieOptions = {
     httpOnly: true,
@@ -87,13 +91,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     path: "/",
   };
 
-  res.cookie(COOKIE_NAME, String(user.id), cookieOptions);
+  res.cookie(COOKIE_NAME, token, cookieOptions);
 
   res.json({
     id: user.id,
     name: user.name,
     email: user.email,
-    token: String(user.id),
+    token,
   });
 });
 
@@ -103,19 +107,8 @@ router.post("/auth/logout", (_req, res): void => {
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {
-  const authHeader = req.headers.authorization;
-  const headerToken = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : (req.headers["x-user-id"] as string);
-
-  const userIdRaw = req.cookies[COOKIE_NAME] || headerToken;
-  if (!userIdRaw) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
-
-  const userId = parseInt(userIdRaw, 10);
-  if (isNaN(userId)) {
+  const userId = getAuthUserId(req);
+  if (!userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
@@ -140,3 +133,4 @@ router.get("/auth/me", async (req, res): Promise<void> => {
 });
 
 export default router;
+
