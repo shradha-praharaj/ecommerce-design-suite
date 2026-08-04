@@ -41,7 +41,7 @@ export function ProductCard({ product, reason, className = "" }: ProductCardProp
     >
       <Link href={`/product/${product.id}`} className="block">
         <div
-          className={`min-w-[180px] sm:min-w-[220px] h-full border border-gray-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-lg dark:hover:shadow-indigo-500/5 transition-all bg-white dark:bg-slate-900 group cursor-pointer flex flex-col ${className}`}
+          className={`min-w-0 w-full h-full border border-gray-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-lg dark:hover:shadow-indigo-500/5 transition-all bg-white dark:bg-slate-900 group cursor-pointer flex flex-col ${className}`}
           data-testid={`card-product-${product.id}`}
         >
           <div className="h-40 bg-gray-50 dark:bg-slate-800/80 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative p-2">
@@ -54,7 +54,7 @@ export function ProductCard({ product, reason, className = "" }: ProductCardProp
             <button
               onClick={handleAddToCart}
               aria-label={`Add ${product.name} to cart`}
-              className="absolute bottom-2 right-2 w-9 h-9 sm:w-10 sm:h-10 bg-white dark:bg-slate-800 rounded-full shadow-md border border-gray-100 dark:border-slate-700 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-indigo-50 dark:hover:bg-indigo-950/60 active:scale-95"
+              className="absolute bottom-2 right-2 w-11 h-11 bg-white dark:bg-slate-800 rounded-full shadow-md border border-gray-100 dark:border-slate-700 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-indigo-50 dark:hover:bg-indigo-950/60 active:scale-95"
               data-testid={`button-add-to-cart-${product.id}`}
             >
               <ShoppingCart

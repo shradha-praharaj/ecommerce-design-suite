@@ -74,7 +74,7 @@ export default function CategoryPage() {
       <div className="bg-white dark:bg-slate-950 min-h-screen transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 mb-6">
+          <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 mb-6 overflow-x-auto whitespace-nowrap">
             <Link
               href="/"
               className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
@@ -115,7 +115,7 @@ export default function CategoryPage() {
                       setComponentType(ct.value);
                       setPage(1);
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full min-h-11 text-xs font-semibold border transition-colors ${
                       active
                         ? 'bg-indigo-600 text-white border-indigo-600'
                         : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500'
@@ -148,7 +148,7 @@ export default function CategoryPage() {
                     ? 'Quick search gaming products (e.g. Ryzen 7, RTX 4070, DDR5, Corsair, 360mm)...'
                     : `Quick search in ${categoryName}...`
                 }
-                className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 shadow-sm transition-all"
+                className="w-full pl-10 pr-10 py-3 min-h-11 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 shadow-sm transition-all"
                 data-testid="input-quick-search-gaming"
               />
               {searchQuery && (
@@ -184,7 +184,7 @@ export default function CategoryPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer">
                 <input
                   type="checkbox"
@@ -205,7 +205,7 @@ export default function CategoryPage() {
                     setSortBy(e.target.value as typeof sortBy);
                     setPage(1);
                   }}
-                  className="appearance-none bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="appearance-none min-h-11 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {SORT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -247,11 +247,11 @@ export default function CategoryPage() {
 
               {/* Pagination */}
               {data.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-8">
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 rounded-lg min-h-11 text-sm font-medium border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
@@ -273,7 +273,7 @@ export default function CategoryPage() {
                           <button
                             key={pageNum}
                             onClick={() => setPage(pageNum)}
-                            className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                            className={`w-11 h-11 rounded-lg text-sm font-medium transition-colors ${
                               page === pageNum
                                 ? 'bg-indigo-600 text-white'
                                 : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
@@ -288,7 +288,7 @@ export default function CategoryPage() {
                   <button
                     disabled={page >= data.totalPages}
                     onClick={() => setPage(page + 1)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 rounded-lg min-h-11 text-sm font-medium border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>

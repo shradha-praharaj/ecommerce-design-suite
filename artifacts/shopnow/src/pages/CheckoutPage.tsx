@@ -198,23 +198,25 @@ export default function CheckoutPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-neutral-900 dark:text-neutral-100">
+      <div className="max-w-3xl mx-auto py-8 sm:py-12 px-4 sm:px-6 lg:px-8 text-neutral-900 dark:text-neutral-100">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-6 sm:mb-8">
           <ShoppingCart className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-          <h1 className="text-3xl font-bold tracking-tight">Checkout</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Checkout
+          </h1>
         </div>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8">
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${step === 'review' ? 'bg-indigo-600 text-white' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'}`}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 min-h-11 rounded-full text-xs sm:text-sm font-semibold transition-colors ${step === 'review' ? 'bg-indigo-600 text-white' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'}`}
           >
             <Package size={16} /> 1. Review Order
           </div>
           <ChevronRight size={16} className="text-neutral-400" />
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${step === 'payment' ? 'bg-indigo-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'}`}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 min-h-11 rounded-full text-xs sm:text-sm font-semibold transition-colors ${step === 'payment' ? 'bg-indigo-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'}`}
           >
             <CreditCard size={16} /> 2. Payment
           </div>
@@ -249,10 +251,15 @@ export default function CheckoutPage() {
                       >
                         <div className="w-16 h-16 bg-neutral-50 dark:bg-neutral-900 rounded-lg flex items-center justify-center p-2 border border-neutral-100 dark:border-neutral-700 shrink-0">
                           <img
-                            src={resolveProductImageSrc(item.product.imageUrl, item.product.name)}
+                            src={resolveProductImageSrc(
+                              item.product.imageUrl,
+                              item.product.name,
+                            )}
                             alt={item.product.name}
                             className="w-full h-full object-contain"
-                            onError={(e) => onProductImageError(e, item.product.name)}
+                            onError={(e) =>
+                              onProductImageError(e, item.product.name)
+                            }
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -428,7 +435,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={!cart || cart.items.length === 0}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
+              className="w-full py-4 min-h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
             >
               Proceed to Payment <ChevronRight size={18} />
             </button>
@@ -440,7 +447,7 @@ export default function CheckoutPage() {
           <form onSubmit={handlePlaceOrder} className="space-y-6">
             {/* Mini order total */}
             {cart && (
-              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 flex items-center justify-between">
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
                     {cart.items.length} item{cart.items.length !== 1 ? 's' : ''}{' '}
@@ -529,18 +536,18 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={() => setStep('review')}
-                className="shrink-0 px-6 py-4 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-semibold rounded-xl transition-colors flex items-center gap-2 border border-neutral-200 dark:border-neutral-700"
+                className="shrink-0 px-6 py-4 min-h-12 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 border border-neutral-200 dark:border-neutral-700"
               >
                 <ArrowLeft size={16} /> Back
               </button>
               <button
                 type="submit"
                 disabled={checkoutMutation.isPending}
-                className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
+                className="flex-1 py-4 min-h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none"
               >
                 <Lock size={16} />
                 {checkoutMutation.isPending ? 'Processing…' : 'Place Order'}

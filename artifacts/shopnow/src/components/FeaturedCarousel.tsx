@@ -132,9 +132,9 @@ export function FeaturedCarousel({
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       <div
-        className={`relative rounded-2xl overflow-hidden bg-gradient-to-br ${theme.bg} min-h-[420px] md:min-h-[440px] transition-all duration-700`}
+        className={`relative rounded-2xl overflow-hidden bg-gradient-to-br ${theme.bg} min-h-95 sm:min-h-105 md:min-h-110 transition-all duration-700`}
         role="region"
         aria-roledescription="carousel"
         aria-label="Featured Products"
@@ -161,7 +161,7 @@ export function FeaturedCarousel({
 
         {/* Content */}
         <div
-          className={`relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-12 p-8 md:p-12 transition-all duration-300 ${
+          className={`relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-12 p-5 sm:p-8 md:p-12 transition-all duration-300 ${
             isTransitioning ? 'opacity-0 scale-[0.97]' : 'opacity-100 scale-100'
           }`}
           role="group"
@@ -181,7 +181,7 @@ export function FeaturedCarousel({
               {product.brand}
             </p>
 
-            <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-extrabold text-white leading-tight mb-4 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] font-extrabold text-white leading-tight mb-4 tracking-tight">
               {product.name}
             </h2>
 
@@ -233,16 +233,16 @@ export function FeaturedCarousel({
             </div>
 
             {/* CTAs */}
-            <div className="flex items-center gap-3 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 justify-center md:justify-start w-full sm:w-auto">
               <Link
                 href={`/product/${product.id}`}
-                className={`${theme.accentBg} hover:brightness-110 text-white px-7 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 shadow-lg shadow-black/20`}
+                className={`${theme.accentBg} hover:brightness-110 text-white px-7 py-3 min-h-11 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/20`}
               >
                 View Details <ChevronRight size={16} />
               </Link>
               <button
                 onClick={(e) => onBuyNow(e, product.id)}
-                className="bg-white/10 hover:bg-white/15 text-white px-5 py-3 rounded-xl font-semibold transition-all backdrop-blur-sm border border-white/10 flex items-center gap-2"
+                className="bg-white/10 hover:bg-white/15 text-white px-5 py-3 min-h-11 rounded-xl font-semibold transition-all backdrop-blur-sm border border-white/10 flex items-center justify-center gap-2"
               >
                 <Zap size={16} /> Buy Now
               </button>
@@ -271,14 +271,14 @@ export function FeaturedCarousel({
           <>
             <button
               onClick={prev}
-              className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white transition-all sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 active:scale-95"
+              className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white transition-all sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 active:scale-95"
               aria-label="Previous product"
             >
               <ChevronLeft size={20} />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white transition-all sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 active:scale-95"
+              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white transition-all sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 active:scale-95"
               aria-label="Next product"
             >
               <ChevronRight size={20} />

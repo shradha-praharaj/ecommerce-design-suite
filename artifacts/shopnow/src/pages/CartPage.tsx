@@ -156,7 +156,7 @@ export default function CartPage() {
   if (isCartLoading) {
     return (
       <AppLayout activePage="cart">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <Skeleton className="w-full h-[300px]" />
         </div>
       </AppLayout>
@@ -168,15 +168,16 @@ export default function CartPage() {
   return (
     <AppLayout activePage="cart">
       <div className="bg-[#f8f9fb] dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-24 transition-colors">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
                 Shopping Cart
               </h1>
               {hasItems && (
                 <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 px-2.5 py-0.5 rounded-full">
-                  {cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}
+                  {cart.items.length}{' '}
+                  {cart.items.length === 1 ? 'item' : 'items'}
                 </span>
               )}
             </div>
@@ -185,11 +186,14 @@ export default function CartPage() {
               <button
                 onClick={handleEmptyCart}
                 disabled={isEmptyingCart}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 hover:border-red-300 dark:hover:border-red-800 transition-all font-semibold text-xs shadow-xs hover:shadow active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-11 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 hover:border-red-300 dark:hover:border-red-800 transition-all font-semibold text-xs shadow-xs hover:shadow active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Remove all items from your cart"
                 data-testid="btn-empty-cart"
               >
-                <Trash2 size={14} className={isEmptyingCart ? 'animate-bounce' : ''} />
+                <Trash2
+                  size={14}
+                  className={isEmptyingCart ? 'animate-bounce' : ''}
+                />
                 {isEmptyingCart ? 'Emptying Cart...' : 'Empty Cart'}
               </button>
             )}
@@ -202,15 +206,20 @@ export default function CartPage() {
                 {cart.items.map((item) => (
                   <div
                     key={item.product.id}
-                    className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-5 flex gap-5 shadow-sm"
+                    className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:gap-5 shadow-sm"
                     data-testid={`cart-item-${item.product.id}`}
                   >
-                    <div className="w-32 h-32 bg-gray-50 dark:bg-slate-800/80 rounded-lg border border-gray-100 dark:border-slate-800 flex items-center justify-center p-2">
+                    <div className="w-full sm:w-32 h-52 sm:h-32 bg-gray-50 dark:bg-slate-800/80 rounded-lg border border-gray-100 dark:border-slate-800 flex items-center justify-center p-2">
                       <img
-                        src={resolveProductImageSrc(item.product.imageUrl, item.product.name)}
+                        src={resolveProductImageSrc(
+                          item.product.imageUrl,
+                          item.product.name,
+                        )}
                         alt={item.product.name}
                         className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal"
-                        onError={(e) => onProductImageError(e, item.product.name)}
+                        onError={(e) =>
+                          onProductImageError(e, item.product.name)
+                        }
                       />
                     </div>
                     <div className="flex-1 flex flex-col">
@@ -220,7 +229,7 @@ export default function CartPage() {
                             {item.product.name}
                           </h3>
                         </Link>
-                        <div className="font-bold text-xl text-gray-900 dark:text-indigo-400 text-right">
+                        <div className="font-bold text-lg sm:text-xl text-gray-900 dark:text-indigo-400 text-right">
                           {formatPrice(item.product.price)}
                         </div>
                       </div>
@@ -231,8 +240,8 @@ export default function CartPage() {
                         In Stock
                       </div>
 
-                      <div className="mt-auto flex items-center justify-between">
-                        <div className="flex items-center gap-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-1">
+                      <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-1 self-start">
                           <button
                             onClick={() =>
                               handleUpdateQuantity(
@@ -263,7 +272,7 @@ export default function CartPage() {
                             +
                           </button>
                         </div>
-                        <div className="flex items-center gap-4 text-sm font-medium">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm font-medium">
                           <button className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
                             <Heart size={14} /> Save for Later
                           </button>
@@ -283,8 +292,8 @@ export default function CartPage() {
                   </div>
                 ))}
 
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between mt-2">
-                  <div className="flex items-center gap-3">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
+                  <div className="flex items-start sm:items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/60 rounded-full flex items-center justify-center">
                       <Truck
                         size={18}
@@ -320,7 +329,7 @@ export default function CartPage() {
                       setDraftAddress({ ...savedAddress });
                       setShowAddressModal(true);
                     }}
-                    className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                    className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 min-h-11"
                   >
                     <MapPin size={13} />{' '}
                     {savedAddress.street ? 'Change' : 'Add Address'}
@@ -457,7 +466,7 @@ export default function CartPage() {
                             !draftAddress.city ||
                             !draftAddress.zip
                           }
-                          className="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 py-2.5 min-h-11 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Check size={15} /> Save Address
                         </button>
@@ -468,7 +477,7 @@ export default function CartPage() {
               </div>
 
               {/* Right: Order Summary */}
-              <div className="w-full lg:w-[380px]">
+              <div className="w-full lg:w-95">
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden sticky top-24">
                   <div className="p-5 border-b border-gray-100 dark:border-slate-800">
                     <h2 className="font-bold text-lg text-gray-900 dark:text-slate-100 mb-4">
@@ -531,7 +540,7 @@ export default function CartPage() {
 
                     <Link href="/checkout">
                       <button
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer"
+                        className="w-full min-h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-200 dark:shadow-none cursor-pointer"
                         data-testid="btn-checkout"
                       >
                         Proceed to Checkout <ChevronRight size={18} />
@@ -587,7 +596,7 @@ export default function CartPage() {
                 Looks like you haven't added anything to your cart yet.
               </p>
               <Link href="/">
-                <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 min-h-11 rounded-lg transition-colors">
                   Continue Shopping
                 </button>
               </Link>

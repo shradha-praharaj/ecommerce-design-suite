@@ -74,7 +74,7 @@ export default function PDPPage() {
         <div className="bg-white dark:bg-slate-950 min-h-screen pb-24">
           {/* Breadcrumb skeleton */}
           <div className="border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-2">
               <Skeleton className="h-3 w-10" />
               <Skeleton className="h-3 w-3" />
               <Skeleton className="h-3 w-16" />
@@ -85,7 +85,7 @@ export default function PDPPage() {
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
             <div className="flex flex-col md:flex-row gap-12">
               {/* Left: Image gallery skeleton */}
               <div className="w-full md:w-1/2 flex flex-col gap-4">
@@ -202,7 +202,10 @@ export default function PDPPage() {
     try {
       if (typeof product.specs === 'object') {
         parsedSpecsObj = product.specs;
-      } else if (typeof product.specs === 'string' && product.specs.trim().startsWith('{')) {
+      } else if (
+        typeof product.specs === 'string' &&
+        product.specs.trim().startsWith('{')
+      ) {
         parsedSpecsObj = JSON.parse(product.specs);
       }
     } catch {
@@ -257,7 +260,7 @@ export default function PDPPage() {
       <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-24 transition-colors">
         {/* Breadcrumb */}
         <div className="border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center text-xs font-medium text-gray-500 dark:text-slate-400 gap-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center text-xs font-medium text-gray-500 dark:text-slate-400 gap-2 overflow-x-auto whitespace-nowrap">
             <Link
               href="/"
               className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
@@ -280,8 +283,8 @@ export default function PDPPage() {
         </div>
 
         {/* Product Hero */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row gap-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex flex-col md:flex-row gap-8 md:gap-12">
             {/* Left: Gallery */}
             <div className="w-full md:w-1/2 flex flex-col gap-4">
               <div className="aspect-square bg-gray-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center p-8 border border-gray-100 dark:border-slate-800 relative group overflow-hidden">
@@ -300,12 +303,12 @@ export default function PDPPage() {
                   onError={onProductImageError}
                 />
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-1">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveImageIdx(i)}
-                    className={`w-20 h-20 rounded-xl bg-gray-50 dark:bg-slate-900 border-2 flex items-center justify-center p-2 overflow-hidden ${activeImageIdx === i ? 'border-indigo-600 dark:border-indigo-500' : 'border-transparent hover:border-gray-200 dark:hover:border-slate-800'}`}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gray-50 dark:bg-slate-900 border-2 shrink-0 flex items-center justify-center p-2 overflow-hidden ${activeImageIdx === i ? 'border-indigo-600 dark:border-indigo-500' : 'border-transparent hover:border-gray-200 dark:hover:border-slate-800'}`}
                     data-testid={`btn-thumb-${i}`}
                   >
                     <img
@@ -389,14 +392,28 @@ export default function PDPPage() {
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(parsedSpecsObj)
-                      .filter(([key]) => !['cpuSocket', 'supportedSockets', 'ramGeneration', 'coolerType', 'gpuLength', 'psuWattage', 'radiatorSize', 'storageInterface'].includes(key))
+                      .filter(
+                        ([key]) =>
+                          ![
+                            'cpuSocket',
+                            'supportedSockets',
+                            'ramGeneration',
+                            'coolerType',
+                            'gpuLength',
+                            'psuWattage',
+                            'radiatorSize',
+                            'storageInterface',
+                          ].includes(key),
+                      )
                       .slice(0, 4)
                       .map(([key, val]) => (
                         <div
                           key={key}
                           className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
                         >
-                          <span className="text-slate-500 dark:text-slate-400 font-medium">{key}: </span>
+                          <span className="text-slate-500 dark:text-slate-400 font-medium">
+                            {key}:{' '}
+                          </span>
                           <span className="font-semibold">{String(val)}</span>
                         </div>
                       ))}
@@ -462,7 +479,7 @@ export default function PDPPage() {
                   <button
                     onClick={handleAddToCart}
                     disabled={!product.inStock}
-                    className="flex-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold py-3.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-900/50 disabled:opacity-50"
+                    className="flex-1 min-h-11 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold py-3.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-900/50 disabled:opacity-50"
                     data-testid="btn-add-to-cart"
                   >
                     <ShoppingCart size={18} />
@@ -471,7 +488,7 @@ export default function PDPPage() {
                   <button
                     onClick={handleBuyNow}
                     disabled={!product.inStock}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-lg shadow-md shadow-indigo-200 dark:shadow-none transition-colors disabled:opacity-50"
+                    className="flex-1 min-h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-lg shadow-md shadow-indigo-200 dark:shadow-none transition-colors disabled:opacity-50"
                     data-testid="btn-buy-now"
                   >
                     Buy Now
@@ -524,11 +541,11 @@ export default function PDPPage() {
         {/* ─── LOGGED-IN: Personalised AI recommendations ─── */}
         {!isRecsLoading && pdpRecs && isLoggedIn && (
           <>
-            <div className="max-w-7xl mx-auto px-6 pt-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
               <RecommendationWidget widget={pdpRecs.hybrid} variant="hybrid" />
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                   {pdpRecs.frequentlyBoughtTogether.title}
@@ -647,7 +664,7 @@ export default function PDPPage() {
         {!isRecsLoading && pdpRecs && !isLoggedIn && (
           <>
             {/* Frequently Bought Together */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
                   Frequently Bought Together
@@ -767,7 +784,7 @@ export default function PDPPage() {
             )}
 
             {/* Subtle sign-in nudge */}
-            <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
               <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 rounded-xl px-6 py-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <Activity

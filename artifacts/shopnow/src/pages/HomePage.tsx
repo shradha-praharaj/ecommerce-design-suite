@@ -25,8 +25,11 @@ import {
 // Skeleton components for loading states
 function CarouselSkeleton() {
   return (
-    <div className="relative w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-900 dark:to-slate-950" style={{ height: '420px' }}>
-      <div className="max-w-7xl mx-auto px-6 h-full flex items-center">
+    <div
+      className="relative w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-900 dark:to-slate-950"
+      style={{ minHeight: '360px', height: 'clamp(360px, 58vw, 420px)' }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center">
         <div className="flex-1 space-y-4">
           <div className="h-4 w-24 bg-gray-200 dark:bg-slate-800 rounded-full animate-pulse" />
           <div className="h-8 w-80 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
@@ -61,13 +64,15 @@ function DealCardSkeleton() {
 
 function DealsGridSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <div className="h-7 w-64 bg-gray-200 dark:bg-slate-800 rounded animate-pulse" />
         <div className="h-8 w-40 bg-gray-100 dark:bg-slate-800/50 rounded-md animate-pulse" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <DealCardSkeleton key={i} />)}
+        {[...Array(4)].map((_, i) => (
+          <DealCardSkeleton key={i} />
+        ))}
       </div>
     </div>
   );
@@ -75,14 +80,17 @@ function DealsGridSkeleton() {
 
 function RecommendationSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center gap-3 mb-6">
         <div className="h-6 w-48 bg-gray-200 dark:bg-slate-800 rounded animate-pulse" />
         <div className="h-5 w-28 bg-gray-100 dark:bg-slate-800/50 rounded-full animate-pulse" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-3 animate-pulse">
+          <div
+            key={i}
+            className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-3 animate-pulse"
+          >
             <div className="h-32 bg-gray-100 dark:bg-slate-800 rounded-lg mb-3" />
             <div className="h-3 w-3/4 bg-gray-200 dark:bg-slate-800 rounded mb-2" />
             <div className="h-4 w-1/2 bg-gray-200 dark:bg-slate-800 rounded" />
@@ -123,8 +131,12 @@ export default function HomePage() {
 
   // Anonymous: pull mobiles and laptops from product list
   const { data: allProducts, isLoading: isAllLoading } = useListProducts();
-  const trendingMobiles = (allProducts ?? []).filter((p) => p.category === "Mobiles").slice(0, 6);
-  const laptopDeals = (allProducts ?? []).filter((p) => p.category === "Laptops").slice(0, 6);
+  const trendingMobiles = (allProducts ?? [])
+    .filter((p) => p.category === 'Mobiles')
+    .slice(0, 6);
+  const laptopDeals = (allProducts ?? [])
+    .filter((p) => p.category === 'Laptops')
+    .slice(0, 6);
 
   const handleAddToCart = (e: React.MouseEvent, productId: number) => {
     e.preventDefault();
@@ -135,7 +147,7 @@ export default function HomePage() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
         },
-      }
+      },
     );
   };
 
@@ -158,7 +170,11 @@ export default function HomePage() {
   };
 
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(price);
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
 
   return (
     <AppLayout activePage="home">
@@ -166,7 +182,7 @@ export default function HomePage() {
         {/* Category browsing strip */}
         <div className="border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
           <motion.div
-            className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between overflow-x-auto gap-8"
+            className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-start overflow-x-auto gap-5 sm:gap-8"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
@@ -225,9 +241,9 @@ export default function HomePage() {
         {/* Top Deals */}
         {isDealsLoading && <DealsGridSkeleton />}
         {!isDealsLoading && deals && deals.length > 0 && (
-          <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
             <motion.div
-              className="flex items-center justify-between mb-6"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6"
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -301,7 +317,7 @@ export default function HomePage() {
                         </div>
                         <button
                           onClick={(e) => handleAddToCart(e, deal.id)}
-                          className="w-full bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50 font-semibold py-2 rounded transition-colors text-sm"
+                          className="w-full min-h-11 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50 font-semibold py-2 rounded transition-colors text-sm"
                           data-testid={`btn-deal-cart-${deal.id}`}
                         >
                           Add to Cart
@@ -390,7 +406,7 @@ export default function HomePage() {
 
             {/* Sign-in nudge card */}
             <motion.div
-              className="max-w-7xl mx-auto px-6 py-8"
+              className="max-w-7xl mx-auto px-4 sm:px-6 py-8"
               initial={{ opacity: 0, scale: 0.96 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}

@@ -82,14 +82,14 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9fb] dark:bg-slate-950 font-sans transition-colors duration-200">
       {/* Top announcement bar */}
-      <div className="bg-[#1a1a2e] text-[#e0e0ff] text-[13px] py-1.5 text-center px-4">
-        🎉 Free shipping on orders over ₹999 &nbsp;|&nbsp; Use code{' '}
+      <div className="bg-[#1a1a2e] text-[#e0e0ff] text-[12px] sm:text-[13px] py-2 text-center px-3 sm:px-4 leading-relaxed">
+        Free shipping on orders over ₹999 &nbsp;|&nbsp; Use code{' '}
         <strong>TECH20</strong> for 20% off
       </div>
 
       {/* Nav */}
       <header className="bg-white dark:bg-slate-900 border-b border-[#e8eaf0] dark:border-slate-800 sticky top-0 z-50 shadow-[0_1px_8px_rgba(0,0,0,0.06)] transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] sm:h-[76px] flex items-center justify-between gap-4 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[72px] sm:h-[76px] flex items-center justify-between gap-2 sm:gap-6">
           {/* Logo */}
           <Link
             href="/"
@@ -124,7 +124,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
           </form>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2.5 shrink-0 relative">
+          <div className="flex items-center gap-2 shrink-0 relative">
             {/* AI Chatbot */}
             <AIChatbot />
 
@@ -133,7 +133,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
               onClick={toggleTheme}
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
               aria-label={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors cursor-pointer"
+              className="w-11 h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-gray-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-700 transition-colors cursor-pointer"
               data-testid="button-theme-toggle"
             >
               {theme === 'light' ? (
@@ -330,7 +330,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
                       : `/category/${encodeURIComponent(label)}`
                   }
                   aria-current={isActive ? 'page' : undefined}
-                  className={`px-3.5 py-2 rounded-full text-[12px] font-semibold border transition-colors shrink-0 min-h-[38px] flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2.5 rounded-full text-[12px] font-semibold border transition-colors shrink-0 min-h-11 flex items-center gap-1.5 ${
                     isActive
                       ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/25'
                       : 'text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-700'
@@ -348,7 +348,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
 
       {/* Anonymous mode banner */}
       {!isLoggedIn && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 px-6 py-2.5 text-center">
+        <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 px-4 sm:px-6 py-2.5 text-center">
           <span className="text-amber-800 dark:text-amber-300 text-[13px]">
             You're browsing as a <strong>guest</strong> — showing curated &amp;
             trending picks.{' '}
@@ -368,8 +368,8 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
       <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="bg-[#1a1a2e] text-gray-400 py-8 px-6 mt-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <footer className="bg-[#1a1a2e] text-gray-400 py-8 px-4 sm:px-6 mt-10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
               <Zap size={14} color="white" />
@@ -379,7 +379,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
           <div className="text-xs">
             © 2025 ShopNow Electronics. Trusted by 2M+ customers.
           </div>
-          <div className="flex gap-5 text-[13px]">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px]">
             {['Privacy', 'Terms', 'Support', 'Returns'].map((l) => (
               <span
                 key={l}

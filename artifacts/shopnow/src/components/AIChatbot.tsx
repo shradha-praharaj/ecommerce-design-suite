@@ -517,7 +517,7 @@ export function AIChatbot() {
       {/* Glowing AI trigger button */}
       <button
         onClick={handleOpen}
-        className="relative group flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all shadow-[0_0_18px_rgba(79,70,229,0.5)] hover:shadow-[0_0_28px_rgba(79,70,229,0.8)] active:scale-95"
+        className="relative group flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all shadow-[0_0_18px_rgba(79,70,229,0.5)] hover:shadow-[0_0_28px_rgba(79,70,229,0.8)] active:scale-95"
         title="AI Assistant"
         aria-label="Open AI Assistant Chat"
       >
@@ -535,7 +535,7 @@ export function AIChatbot() {
             {/* Backdrop for expanded mode */}
             {isExpanded && (
               <motion.div
-                className="fixed inset-0 bg-black/50 z-[99]"
+                className="fixed inset-0 bg-black/50 z-99"
                 onClick={() => setIsExpanded(false)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -547,7 +547,7 @@ export function AIChatbot() {
               className={`${
                 isExpanded
                   ? 'fixed inset-2 sm:inset-4 md:inset-8 lg:inset-12 2xl:inset-20 z-100 rounded-2xl'
-                  : 'absolute top-16 right-0 w-[calc(100vw-1rem)] max-w-90 sm:max-w-105 md:max-w-120 lg:max-w-130 2xl:max-w-150 rounded-2xl'
+                  : 'absolute top-16 right-0 w-[min(calc(100vw-0.75rem),42rem)] sm:w-[min(calc(100vw-1rem),42rem)] max-w-90 sm:max-w-105 md:max-w-120 lg:max-w-130 2xl:max-w-150 rounded-2xl'
               } bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden z-50 flex flex-col`}
               style={isExpanded ? undefined : { height: 'min(75vh, 640px)' }}
               initial={
@@ -577,7 +577,7 @@ export function AIChatbot() {
                   {compareProducts.length > 0 && (
                     <button
                       onClick={() => setShowCompare((v) => !v)}
-                      className="hover:bg-white/20 p-1.5 rounded-md transition-colors flex items-center gap-1"
+                      className="hover:bg-white/20 min-h-9 min-w-9 px-2 rounded-md transition-colors flex items-center justify-center gap-1"
                       title={`Compare ${compareProducts.length} products`}
                     >
                       <GitCompareArrows size={14} />
@@ -589,7 +589,7 @@ export function AIChatbot() {
                   {messages.length > 0 && (
                     <button
                       onClick={handleClearChat}
-                      className="hover:bg-white/20 p-1.5 rounded-md transition-colors"
+                      className="hover:bg-white/20 min-h-9 min-w-9 px-2 rounded-md transition-colors flex items-center justify-center"
                       title="Clear chat"
                     >
                       <Trash2 size={14} />
@@ -597,7 +597,7 @@ export function AIChatbot() {
                   )}
                   <button
                     onClick={() => setIsExpanded((v) => !v)}
-                    className="hover:bg-white/20 p-1.5 rounded-md transition-colors"
+                    className="hover:bg-white/20 min-h-9 min-w-9 px-2 rounded-md transition-colors flex items-center justify-center"
                     title={isExpanded ? 'Minimize' : 'Expand'}
                   >
                     {isExpanded ? (
@@ -611,7 +611,7 @@ export function AIChatbot() {
                       setIsOpen(false);
                       setIsExpanded(false);
                     }}
-                    className="hover:bg-white/20 p-1.5 rounded-md transition-colors"
+                    className="hover:bg-white/20 min-h-9 min-w-9 px-2 rounded-md transition-colors flex items-center justify-center"
                   >
                     <X size={18} />
                   </button>
@@ -621,7 +621,7 @@ export function AIChatbot() {
               {/* Messages */}
               <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 2xl:p-6 space-y-3 sm:space-y-4 bg-neutral-50 dark:bg-neutral-950 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 2xl:p-6 space-y-3 sm:space-y-4 bg-neutral-50 dark:bg-neutral-950 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
               >
                 {/* Empty state: guest */}
                 {messages.length === 0 && !isLoggedIn && (
@@ -739,10 +739,15 @@ export function AIChatbot() {
                                   className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-2 text-center"
                                 >
                                   <img
-                                    src={resolveProductImageSrc(p.imageUrl, p.name)}
+                                    src={resolveProductImageSrc(
+                                      p.imageUrl,
+                                      p.name,
+                                    )}
                                     alt={p.name}
                                     className="w-10 h-10 object-cover rounded-lg mx-auto mb-1.5"
-                                    onError={(e) => onProductImageError(e, p.name)}
+                                    onError={(e) =>
+                                      onProductImageError(e, p.name)
+                                    }
                                   />
                                   <div className="text-[10px] font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2">
                                     {p.name}
@@ -937,7 +942,7 @@ export function AIChatbot() {
                                 <button
                                   onClick={() => handleToggleCompare(p)}
                                   disabled={!isInCompare && !canAdd}
-                                  className={`shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                  className={`shrink-0 w-9 h-9 rounded border-2 flex items-center justify-center transition-colors ${
                                     isInCompare
                                       ? 'bg-indigo-600 border-indigo-600 text-white'
                                       : canAdd
@@ -960,10 +965,15 @@ export function AIChatbot() {
                                   className="w-12 h-12 bg-neutral-100 dark:bg-neutral-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-indigo-400 transition-all"
                                 >
                                   <img
-                                    src={resolveProductImageSrc(p.imageUrl, p.name)}
+                                    src={resolveProductImageSrc(
+                                      p.imageUrl,
+                                      p.name,
+                                    )}
                                     alt={p.name}
                                     className="w-11 h-11 object-cover rounded-lg"
-                                    onError={(e) => onProductImageError(e, p.name)}
+                                    onError={(e) =>
+                                      onProductImageError(e, p.name)
+                                    }
                                   />
                                 </Link>
                                 <Link
@@ -991,7 +1001,7 @@ export function AIChatbot() {
                                 <button
                                   onClick={() => handleAddToCart(p.id)}
                                   disabled={addedProducts.has(p.id)}
-                                  className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                                  className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
                                     addedProducts.has(p.id)
                                       ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                                       : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/30'
@@ -1024,7 +1034,7 @@ export function AIChatbot() {
                                 key={idx}
                                 onClick={() => handleQuickAction(suggestion)}
                                 disabled={chatMutation.isPending}
-                                className="px-2.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 disabled:opacity-50"
+                                className="px-2.5 py-2 min-h-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 disabled:opacity-50"
                               >
                                 {suggestion}
                               </button>
@@ -1074,7 +1084,7 @@ export function AIChatbot() {
               <AnimatePresence>
                 {showCompare && compareProducts.length > 0 && (
                   <motion.div
-                    className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 shrink-0 max-h-[50%] overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                    className="border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 shrink-0 max-h-[50%] overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -1093,7 +1103,7 @@ export function AIChatbot() {
                           setCompareProducts([]);
                           setShowCompare(false);
                         }}
-                        className="text-[11px] text-neutral-400 hover:text-red-500 transition-colors"
+                        className="text-[11px] min-h-9 px-2 text-neutral-400 hover:text-red-500 transition-colors"
                       >
                         Clear all
                       </button>
@@ -1108,7 +1118,7 @@ export function AIChatbot() {
                         >
                           <button
                             onClick={() => handleToggleCompare(p)}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center hover:bg-red-200 transition-colors"
+                            className="absolute top-1 right-1 w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center hover:bg-red-200 transition-colors"
                           >
                             <X size={10} />
                           </button>
@@ -1168,7 +1178,7 @@ export function AIChatbot() {
                       <button
                         key={label}
                         onClick={() => handleQuickAction(query)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium whitespace-nowrap hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 shrink-0"
+                        className="flex items-center gap-1.5 px-2.5 py-2 min-h-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium whitespace-nowrap hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 shrink-0"
                       >
                         <Icon size={11} />
                         {label}
@@ -1192,12 +1202,12 @@ export function AIChatbot() {
                       isListening
                         ? '🎤 Listening... Speak now!'
                         : pendingRecommendContext
-                        ? 'Type your answer…'
-                        : compareProducts.length > 0
-                        ? `Compare ${compareProducts.length} product${compareProducts.length !== 1 ? 's' : ''}…`
-                        : isLoggedIn
-                        ? `Ask anything, ${displayName}…`
-                        : 'Ask for recommendations…'
+                          ? 'Type your answer…'
+                          : compareProducts.length > 0
+                            ? `Compare ${compareProducts.length} product${compareProducts.length !== 1 ? 's' : ''}…`
+                            : isLoggedIn
+                              ? `Ask anything, ${displayName}…`
+                              : 'Ask for recommendations…'
                     }
                     className={`w-full bg-neutral-100 dark:bg-neutral-950 border rounded-full py-2 sm:py-2.5 lg:py-3 pl-3 sm:pl-4 ${
                       isSpeechSupported ? 'pr-20' : 'pr-12'
@@ -1215,13 +1225,21 @@ export function AIChatbot() {
                       <button
                         type="button"
                         onClick={toggleListening}
-                        aria-label={isListening ? 'Stop listening' : 'Start voice speech-to-text'}
+                        aria-label={
+                          isListening
+                            ? 'Stop listening'
+                            : 'Start voice speech-to-text'
+                        }
                         className={`h-full aspect-square flex items-center justify-center rounded-full transition-all ${
                           isListening
                             ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/40'
                             : 'text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-neutral-200 dark:hover:bg-neutral-800'
                         }`}
-                        title={isListening ? 'Listening... Click to stop' : 'Speech to text voice input'}
+                        title={
+                          isListening
+                            ? 'Listening... Click to stop'
+                            : 'Speech to text voice input'
+                        }
                       >
                         {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                       </button>
