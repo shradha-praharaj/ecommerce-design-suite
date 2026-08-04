@@ -112,7 +112,11 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-export function AIChatbot() {
+interface AIChatbotProps {
+  variant?: 'header' | 'floating';
+}
+
+export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
   const { isLoggedIn, userName } = useUser();
   const queryClient = useQueryClient();
   const addToCart = useAddToCart();
@@ -517,7 +521,7 @@ export function AIChatbot() {
       {/* Glowing AI trigger button */}
       <button
         onClick={handleOpen}
-        className="relative group flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all shadow-[0_0_18px_rgba(79,70,229,0.5)] hover:shadow-[0_0_28px_rgba(79,70,229,0.8)] active:scale-95"
+        className={`${variant === 'floating' ? 'fixed bottom-5 right-4 z-40' : 'relative'} group flex items-center justify-center w-14 h-14 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all shadow-[0_0_18px_rgba(79,70,229,0.5)] hover:shadow-[0_0_28px_rgba(79,70,229,0.8)] active:scale-95`}
         title="AI Assistant"
         aria-label="Open AI Assistant Chat"
       >
@@ -547,7 +551,9 @@ export function AIChatbot() {
               className={`${
                 isExpanded
                   ? 'fixed inset-2 sm:inset-4 md:inset-8 lg:inset-12 2xl:inset-20 z-100 rounded-2xl'
-                  : 'absolute top-16 right-0 w-[min(calc(100vw-0.75rem),42rem)] sm:w-[min(calc(100vw-1rem),42rem)] max-w-90 sm:max-w-105 md:max-w-120 lg:max-w-130 2xl:max-w-150 rounded-2xl'
+                  : variant === 'floating'
+                    ? 'fixed bottom-22 right-3 z-50 w-[calc(100vw-1.5rem)] max-w-105 rounded-2xl'
+                    : 'absolute top-16 right-0 w-[min(calc(100vw-0.75rem),42rem)] sm:w-[min(calc(100vw-1rem),42rem)] max-w-90 sm:max-w-105 md:max-w-120 lg:max-w-130 2xl:max-w-150 rounded-2xl'
               } bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden z-50 flex flex-col`}
               style={isExpanded ? undefined : { height: 'min(75vh, 640px)' }}
               initial={

@@ -38,6 +38,7 @@ const categories = [
 
 export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
   const [location, setLocation] = useLocation();
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const { data: cart } = useGetCart({
     query: { queryKey: getGetCartQueryKey() },
   });
@@ -148,9 +149,16 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
 
             {/* User avatar with hover dropdown */}
             {isLoggedIn ? (
-              <div className="relative group">
+              <div className="relative">
                 {/* Trigger: Avatar pill */}
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-full pl-1 pr-1.5 sm:pr-2.5 py-1 cursor-pointer border border-transparent hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountMenuOpen((open) => !open)}
+                  aria-expanded={isAccountMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="Open account menu"
+                  className="flex min-h-11 items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-full pl-1 pr-1.5 sm:pr-2.5 py-1 cursor-pointer border border-transparent hover:border-indigo-300 dark:hover:border-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors"
+                >
                   <div className="w-[26px] h-[26px] rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                     {initials}
                   </div>
@@ -161,10 +169,16 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
                     size={12}
                     className="text-gray-400 dark:text-slate-500"
                   />
-                </div>
+                </button>
 
-                {/* Dropdown — shown on hover via group-hover */}
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-100 dark:border-slate-800 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+                <div
+                  role="menu"
+                  className={`absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-100 dark:border-slate-800 overflow-hidden transition-all duration-150 z-50 ${
+                    isAccountMenuOpen
+                      ? 'opacity-100 visible translate-y-0'
+                      : 'opacity-0 invisible -translate-y-1'
+                  }`}
+                >
                   {/* User info header */}
                   <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
                     <div className="flex items-center gap-2.5">
@@ -185,6 +199,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
                   {/* Menu items */}
                   <Link
                     href="/orders"
+                    onClick={() => setIsAccountMenuOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-gray-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                   >
                     <Package size={14} />
@@ -214,7 +229,8 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
                 aria-label="Sign in"
                 title="Sign in"
               >
-                <LogIn size={17} /> <span className="hidden sm:inline">Sign In</span>
+                <LogIn size={17} />{' '}
+                <span className="hidden sm:inline">Sign In</span>
               </button>
             )}
 
@@ -241,6 +257,10 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
               )}
             </Link>
           </div>
+        </div>
+
+        <div className="sm:hidden">
+          <AIChatbot variant="floating" />
         </div>
 
         {/* Desktop category navigation */}
