@@ -10,6 +10,7 @@ import type { UserContext } from './types.js';
 
 export async function loadUserContext(
   userId: number | null,
+  personalizationEnabled: boolean = true,
 ): Promise<UserContext> {
   const userContext: UserContext = {};
 
@@ -21,6 +22,11 @@ export async function loadUserContext(
       .from(usersTable)
       .where(eq(usersTable.id, userId));
     if (user) userContext.name = user.name.split(' ')[0];
+
+    // If personalization is disabled, return basic identity without order profiling
+    if (!personalizationEnabled) {
+      return userContext;
+    }
 
     const recentOrders = await db
       .select({

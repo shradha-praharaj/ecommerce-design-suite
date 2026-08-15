@@ -2,11 +2,20 @@
 
 ## Overview
 
-ShopNow implements a **supervisor-driven, graph-style multi-agent conversational AI** system that provides responsible, multi-turn shopping assistance. The system features an **authenticated conversation memory and checkpoint agent**, **Adaptive Self-Correction & Error Recovery**, a **Multi-Turn Guided Product Advisor Engine** for electronics categories, a pluggable model-provider layer for intent classification, a supervisor for orchestration and fault-tolerant fallbacks, and a deterministic PC Builder engine supporting compatible gaming rigs.
+ShopNow implements a **LangGraph StateGraph-powered, multi-agent conversational AI** system that provides responsible, multi-turn shopping assistance. The system features:
+
+- **LangGraph StateGraph orchestration** (`@langchain/langgraph` v1.4.x) — replacing the legacy hand-rolled `AgentGraph`/`GraphRunner` with typed state channels, conditional edges, and durable PostgresSaver checkpointing.
+- **LangChain Google GenAI integration** (`@langchain/google-genai`) — wrapping Google Gemini via `ChatGoogleGenerativeAI` for native tool-calling and streaming readiness.
+- **Multi-model free-tier rotation** — OpenCode models (`mimo-v2.5-free` → `deepseek-v4-flash-free` → `nemotron-3.5-lighting-free`) are tried in sequence; quota-exhausted models are automatically skipped before falling back to Google Gemini.
+- **Authenticated conversation memory and checkpoint agent** — persistent transcript, versioned checkpoints, and deduplication via `clientMessageId`.
+- **Adaptive Self-Correction & Error Recovery** — detects user corrections across budget, brand, and category dimensions with empathetic acknowledgment.
+- **Multi-Turn Guided Product Advisor Engine** — 3-phase consultation for Mobiles, Laptops, Audio, Cameras, TV, and Tablets.
+- **Responsible AI guardrails** — catalog-grounded recommendations, empty response recovery, and AI transparency disclosures.
+- **Full 8-component deterministic PC Builder** — compatible gaming rigs with brand discovery, inline coupon calculations, and post-build swaps.
 
 ---
 
-## System Flow
+## System Flow (LangGraph)
 
 ```mermaid
 flowchart TD
@@ -14,54 +23,49 @@ flowchart TD
     Frontend -->|POST /api/ai/chat<br/>message + conversationId + clientMessageId| API[📡 API Route Handler]
     API --> Memory[🧠 ConversationMemoryAgent<br/>Transcript + Checkpoint Hydration]
     Memory --> LoadCtx[Load User Context<br/>Only when personalization is enabled]
-    LoadCtx --> Supervisor[🧠 SupervisorAgent]
-    
-    Supervisor --> SelfCorrection{Self-Correction Engine<br/>detectCorrection}
-    SelfCorrection -->|User Correction Detected| PrependPrefix[Format Empathetic Acknowledgment]
-    SelfCorrection --> Router{RouterAgent<br/>Intent Classification}
+    LoadCtx --> Supervisor[🧠 SupervisorAgent<br/>LangGraph graph.invoke]
 
-    Router -->|Gemini API| Gemini[🔮 Google Gemini Flash Models<br/>Structured JSON Output]
-    Router -->|OpenAI-compatible provider| OpenCode[⚡ OpenAI-compatible JSON provider<br/>AI_PROVIDER=opencode]
-    Router -->|Fallback| LocalParse[📋 Local Fallback Parser<br/>Regex + Keyword Matching]
+    subgraph LangGraph["🔀 LangGraph StateGraph"]
+        direction TB
+        START_NODE([START]) --> SC[💡 Self-Correction Node<br/>detectCorrection + detectPersona]
+        SC --> ROUTER[🧭 Router Node<br/>Intent Classification]
+        ROUTER -->|needsClarification| CLARIFY[❓ Clarification Node<br/>Category Disambiguation]
+        ROUTER -->|clear intent| SPECIALIST[⚡ Specialist Node<br/>Dispatches to 10+ Domain Agents]
+        CLARIFY --> GUARDRAIL[🛡️ Guardrail Node<br/>Safety + AI Transparency]
+        SPECIALIST --> GUARDRAIL
+        GUARDRAIL --> END_NODE([END])
+    end
 
-    Gemini --> Clarify{Clarification Policy}
-    OpenCode --> Clarify
-    LocalParse --> Clarify
-    Clarify -->|Budget only, no target| Clarification[Ask category with follow-up chips]
-    Clarify -->|Target supplied| Dispatch
+    Supervisor --> START_NODE
 
-    Dispatch{AgentGraph / GraphRunner} -->|greeting| GA[👋 GreetingAgent]
-    Dispatch -->|product_search| PSA[🔍 ProductSearchAgent]
-    Dispatch -->|guided_advisor| GPA[📱 GuidedProductAdvisorAgent]
-    Dispatch -->|bundle_advisor| BA[🎁 BundleAdvisorAgent]
-    Dispatch -->|gaming_build| GBA[🎮 GamingBuildAdvisorAgent]
-    Dispatch -->|orders| OA[📦 OrdersAgent]
-    Dispatch -->|address| AA[📍 AddressAgent]
-    Dispatch -->|top_picks| TPA[⭐ TopPicksAgent]
-    Dispatch -->|add_to_cart| ACA[🛒 AddToCartAgent]
-    Dispatch -->|unknown| UA[❓ UnknownAgent]
+    subgraph Specialists["Specialist Agents"]
+        GA[👋 GreetingAgent]
+        PSA[🔍 ProductSearchAgent]
+        GPA[📱 GuidedProductAdvisorAgent]
+        BA[🎁 BundleAdvisorAgent]
+        GBA[🎮 GamingBuildAdvisorAgent]
+        OA[📦 OrdersAgent]
+        AA[📍 AddressAgent]
+        TPA[⭐ TopPicksAgent]
+        ACA[🛒 AddToCartAgent]
+        PPA[📈 PopularProductsAgent]
+        UA[❓ UnknownAgent]
+    end
 
-    GPA --> MultiTurnFlow[📱 Multi-Turn Guided Consultation<br/>Phase 1: Use Case ➔ Phase 2: Budget ➔ Phase 3: #1 Best Match]
-    GBA --> PCBuilder[🖥️ pc-builder Service<br/>Full 8-Component Rig Engine]
-    GBA --> BrandDiscovery[🏷️ Stockpile Brand Chooser<br/>ASUS, MSI, Gigabyte, Zotac, etc.]
-    GBA --> CouponEngine[🎟️ Inline Coupon Savings Calculator<br/>BUILD50K, GAMING10, CPU15, GPU5K]
+    SPECIALIST --> Specialists
 
-    GA --> Guardrail[🛡️ GuardrailAgent<br/>Response contract validation]
-    PSA --> Guardrail
-    GPA --> Guardrail
-    BA --> Guardrail
-    GBA --> Guardrail
-    OA --> Guardrail
-    AA --> Guardrail
-    TPA --> Guardrail
-    ACA --> Guardrail
-    UA --> Guardrail
+    subgraph ModelChain["🧠 LLM Model Chain (Failover)"]
+        direction LR
+        M1[mimo-v2.5-free] -->|429 exhausted| M2[deepseek-v4-flash-free]
+        M2 -->|429 exhausted| M3[nemotron-3.5-lighting-free]
+        M3 -->|429 exhausted| M4[🔮 Google Gemini<br/>gemini-3.5-flash-lite]
+        M4 -->|all offline| M5[📋 Local Deterministic<br/>Regex + Keyword Fallback]
+    end
 
-    Clarification --> Guardrail
-    Guardrail --> Response[📤 AgentResponse<br/>reply + products + orders + followUp]
+    ROUTER -.->|Intent Classification| ModelChain
+
+    END_NODE --> Response[📤 AgentResponse<br/>reply + products + orders + followUp]
     Response --> Frontend
-    Frontend --> Chips[💬 Follow-up Chips<br/>Contextual Suggestions]
-    Chips -->|User clicks chip| User
     Response --> Persist[🗄️ Persist authenticated turn<br/>Message + versioned checkpoint]
     Persist --> Memory
 ```
@@ -74,7 +78,7 @@ flowchart TD
 sequenceDiagram
     participant U as 👤 User
     participant FE as 🖥️ Frontend
-    participant SA as 🧠 SupervisorAgent / Self-Correction
+    participant SA as 🧠 SupervisorAgent / LangGraph
     participant GPA as 📱 GuidedProductAdvisorAgent
     participant DB as 🗄️ Database / PostgreSQL
 
@@ -108,27 +112,40 @@ sequenceDiagram
 
 ```
 artifacts/api-server/src/agents/
-├── index.ts                       # Barrel exports
-├── types.ts                       # Shared interfaces
-├── supervisor-agent.ts            # 🧠 Orchestrates agent workflow + fault-tolerant recovery
-├── conversation-memory-agent.ts   # 🧠 Authenticated transcript and checkpoint persistence
-├── self-correction-engine.ts      # 💡 Detects user corrections & generates empathetic self-correcting prefixes
-├── router-agent.ts                # Intent classification + active conversation persistence
-├── guided-product-advisor-agent.ts# 📱 3-Phase Multi-Turn Guided Advisor for Mobiles, Laptops, Audio, Cameras
-├── clarification-policy.ts        # Stops vague budget-only catalog searches
-├── gaming-build-advisor-agent.ts    # 🎮 8-Component PC Build advisor, brand chooser & inline coupon calculator
-├── agent-graph.ts                 # Specialist nodes and intent edges
-├── graph-runner.ts                # Executes the selected graph path
-├── guardrail-agent.ts             # Validates final frontend response contract
-├── user-context.ts                # Loads user profile from DB
-├── greeting-agent.ts              # 👋 Welcome + personalization
-├── product-search-agent.ts        # 🔍 Cascading product search with keyword intelligence
-├── bundle-advisor-agent.ts        # 🎁 Profession-based bundle recommendations
-├── top-picks-agent.ts             # ⭐ History-based recommendations
-├── orders-agent.ts                # 📦 Order history (login-gated)
-├── address-agent.ts               # 📍 Shipping address (login-gated)
-├── add-to-cart-agent.ts           # 🛒 Single + bulk add via conversation
-└── unknown-agent.ts               # ❓ Fallback + suggestions
+├── index.ts                         # Barrel exports (agents + LangGraph)
+├── types.ts                         # Shared interfaces
+├── ai-provider.ts                   # 🧠 Multi-model AI provider with failover chain
+├── supervisor-agent.ts              # 🧠 Orchestrates via LangGraph graph.invoke()
+├── conversation-memory-agent.ts     # 🧠 Authenticated transcript and checkpoint persistence
+├── self-correction-engine.ts        # 💡 Detects user corrections & generates empathetic prefixes
+├── router-agent.ts                  # Intent classification + active conversation persistence
+├── guided-product-advisor-agent.ts  # 📱 3-Phase Multi-Turn Guided Advisor
+├── clarification-policy.ts          # Stops vague budget-only catalog searches
+├── gaming-build-advisor-agent.ts    # 🎮 8-Component PC Build advisor
+├── guardrail-agent.ts               # Validates final frontend response contract
+├── user-context.ts                  # Loads user profile from DB
+├── greeting-agent.ts                # 👋 Welcome + personalization
+├── product-search-agent.ts          # 🔍 Cascading product search
+├── bundle-advisor-agent.ts          # 🎁 Profession-based bundle recommendations
+├── top-picks-agent.ts               # ⭐ History-based recommendations
+├── popular-products-agent.ts        # 📈 Trending products
+├── orders-agent.ts                  # 📦 Order history (login-gated)
+├── address-agent.ts                 # 📍 Shipping address (login-gated)
+├── add-to-cart-agent.ts             # 🛒 Single + bulk add via conversation
+├── compare-agent.ts                 # ⚖️ Product comparison
+├── unknown-agent.ts                 # ❓ Fallback + suggestions
+├── privacy-guard.ts                 # 🔒 PII redaction
+└── langgraph/                       # 🔀 LangGraph Integration
+    ├── index.ts                     #   Barrel exports
+    ├── state.ts                     #   Annotation.Root typed state channels
+    ├── graph.ts                     #   StateGraph builder + PostgresSaver checkpointer
+    ├── langchain-provider.ts        #   ChatGoogleGenerativeAI factory
+    └── nodes/
+        ├── self-correction-node.ts  #   Correction detection + persona classification
+        ├── router-node.ts           #   Intent classification with clarification policy
+        ├── clarification-node.ts    #   Category disambiguation
+        ├── specialist-node.ts       #   Agent dispatch (10+ specialists)
+        └── guardrail-node.ts        #   Safety validation + AI transparency
 ```
 
 Conversation persistence is defined in `lib/db/src/schema/conversations.ts`:
@@ -136,6 +153,111 @@ Conversation persistence is defined in `lib/db/src/schema/conversations.ts`:
 - `chat_conversations` stores the authenticated owner and personalization setting.
 - `chat_messages` stores ordered user/assistant turns and retry IDs.
 - `chat_checkpoints` stores versioned advisor state for guided-flow recovery.
+
+---
+
+## LangGraph StateGraph Architecture
+
+### State Schema (`Annotation.Root`)
+
+The typed state channels in `state.ts` define the data flowing through the graph:
+
+| Channel | Type | Reducer | Purpose |
+|---|---|---|---|
+| `message` | `string` | replace | Current user message |
+| `userId` | `number \| null` | replace | Authenticated user ID |
+| `userContext` | `UserContext` | replace | Orders, interests, brands |
+| `history` | `Array<{role, content}>` | **append** | Conversation transcript |
+| `parsedIntent` | `ParsedIntent \| null` | replace | Router classification result |
+| `checkpoint` | `ConversationCheckpoint \| null` | replace | Business state (persona, advisor, budget) |
+| `currentAgent` | `string` | replace | Selected specialist agent key |
+| `agentResponse` | `AgentResponse \| null` | replace | Specialist output |
+| `correctionDetected` | `boolean` | replace | Self-correction flag |
+| `correctionType` | `string \| null` | replace | `budget` / `brand` / `category` / `general` |
+| `persona` | `string \| null` | replace | `parent` / `student` / `gamer` / `professional` / `gift_buyer` |
+| `needsClarification` | `boolean` | replace | Whether to route to clarification |
+| `isComplete` | `boolean` | replace | Terminal flag |
+
+### Graph Topology
+
+```
+START → self_correction → router
+   ├── [needsClarification=true]  → clarification → guardrail → END
+   └── [needsClarification=false] → specialist    → guardrail → END
+```
+
+### Checkpointing
+
+- **Primary**: `PostgresSaver` (backed by `DATABASE_URL` — durable across restarts)
+- **Fallback**: `MemorySaver` (in-memory, used when Postgres unavailable)
+- **Thread ID**: `user-{userId}` for authenticated sessions, `anon-{timestamp}` for anonymous
+
+---
+
+## Multi-Model Free-Tier Rotation (AI Provider)
+
+### How It Works
+
+The "free rate limit exhausted" error (HTTP 429 / `FreeUsageLimitError`) means the **API key's per-model free quota** is used up — not the model itself going offline. Each free-tier model on OpenCode has its own independent quota pool.
+
+The `OpenCodeProvider` implements an ordered model chain:
+
+```mermaid
+flowchart LR
+    Request[🧠 AI Request] --> M1["1️⃣ mimo-v2.5-free"]
+    M1 -->|exhausted / unsupported| M2["2️⃣ mimo-v2-pro-free"]
+    M2 -->|exhausted / unsupported| M3["3️⃣ nemotron-3-super-free"]
+    M3 -->|exhausted / unsupported| M4["4️⃣ minimax-m2.5-free"]
+    M4 -->|exhausted / unsupported| M5["5️⃣ deepseek-v4-flash-free"]
+    M5 -->|exhausted / unsupported| M6["6️⃣ big-pickle"]
+    M6 -->|exhausted / unsupported| M7["7️⃣ gpt-5-nano"]
+    M7 -->|All exhausted| Gemini["8️⃣ Google Gemini<br/>(gemini-3.5-flash-lite)"]
+    Gemini -->|All offline| Local["9️⃣ Local Deterministic<br/>Regex + Keyword Fallback"]
+```
+
+### Model Chain Configuration
+
+| Priority | Model | Provider | Type |
+|---|---|---|---|
+| 1 | `mimo-v2.5-free` | OpenCode | Free tier |
+| 2 | `mimo-v2-pro-free` | OpenCode | Free tier |
+| 3 | `nemotron-3-super-free` | OpenCode | Free tier |
+| 4 | `minimax-m2.5-free` | OpenCode | Free tier |
+| 5 | `deepseek-v4-flash-free` | OpenCode | Free tier |
+| 6 | `big-pickle` | OpenCode | Free tier |
+| 7 | `gpt-5-nano` | OpenCode | Free tier |
+| 8 | `gemini-3.5-flash-lite` | Google | API key |
+| 9 | Local fallback | Built-in | Deterministic regex/keyword |
+
+### Rate Limit Detection
+
+A response is classified as quota-exhausted when any of these conditions match:
+- HTTP status `429`
+- Body contains: `rate limit`, `FreeUsageLimitError`, `quota`, `resource_exhausted`
+
+### Diagnostic Endpoint
+
+`GET /api/ai/quota-status` returns real-time status of all providers and models:
+
+```json
+{
+  "status": "available",
+  "canUseModel": true,
+  "isLimitExhausted": false,
+  "activeProvider": "opencode",
+  "activeModel": "deepseek-v4-flash-free",
+  "orchestrator": "LangGraph (StateGraph) + @langchain/google-genai",
+  "providers": {
+    "google": { "configured": true, "status": "available", "model": "gemini-3.5-flash-lite" },
+    "opencode": {
+      "configured": true,
+      "status": "available",
+      "model": "deepseek-v4-flash-free",
+      "modelChain": ["mimo-v2.5-free", "deepseek-v4-flash-free", "nemotron-3.5-lighting-free"]
+    }
+  }
+}
+```
 
 ---
 
@@ -154,9 +276,10 @@ Conversation persistence is defined in `lib/db/src/schema/conversations.ts`:
 ### 💡 Self-Correction & Error Recovery Engine (`self-correction-engine.ts`)
 
 - **User Correction Detection**: Scans user input for correction patterns (`"no I meant"`, `"that's not what I asked"`, `"I already said"`, `"you misunderstood"`, `"wrong brand"`).
-- **Empathy & Learning**: Generates natural, apologetic acknowledgment prefixes (`"💡 Understood! My apologies for the brand mixup. I've updated the brand filter for you:"`).
-- **Empty Response Guard (`supervisor-agent.ts`)**: Scans downstream agent outputs. If an agent returns 0 products or a blank response, the Supervisor injects contextual recovery guidance and rescue chips.
-- **Fault Tolerance**: Wraps graph execution in `try-catch` blocks. If downstream API calls or LLM services fail, `SupervisorAgent` triggers a self-healing fallback response instead of breaking the chat.
+- **Correction Type Classification**: Detects `budget` (price/cost/under ₹X), `brand` (Samsung/Apple/etc), `category` (mobile/laptop/gaming), or `general` corrections.
+- **Empathy & Learning**: Generates natural, apologetic acknowledgment prefixes (`"💡 Understood! My apologies for the brand mixup."`).
+- **Empty Response Guard (guardrail-node.ts)**: Scans downstream agent outputs. If an agent returns 0 products or a blank response, injects contextual recovery guidance and rescue chips.
+- **Fault Tolerance**: The SupervisorAgent wraps LangGraph `graph.invoke()` in error handling. If downstream APIs or LLM services fail, a self-healing fallback response is generated.
 
 ### 🎮 Human-Style Store Advisor PC Builder (`gaming-build-advisor-agent.ts` & `pc-builder.ts`)
 
@@ -201,18 +324,31 @@ Conversation persistence is defined in `lib/db/src/schema/conversations.ts`:
 
 ---
 
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/ai/status` | Basic AI provider availability check |
+| `GET` | `/api/ai/quota-status` | Detailed LLM quota diagnostic (model chain status, rate limits) |
+| `POST` | `/api/ai/chat` | Main chat endpoint with memory, checkpointing, and LangGraph |
+| `GET` | `/api/ai/conversations/:id` | Resume authenticated conversation |
+| `DELETE` | `/api/ai/conversations/:id` | Delete conversation with cascading cleanup |
+| `POST` | `/api/ai/compare` | Side-by-side product comparison |
+| `POST` | `/api/ai/recommend` | Product recommendation |
+
+---
+
 ## Security & Safety
 
 - **Login gates**: Orders, Address, AddToCart require authentication
 - **Session isolation**: Cart uses `user_{id}` or `default` session IDs
 - **Input validation**: Message required, history capped at 8 entries
-- **Provider fallback**: Works seamlessly without an API key using the local regex/keyword parser
+- **Multi-tier provider failover**: Works seamlessly without any single API key using the model chain rotation
 - **No PII in logs**: Only intent name + agent name logged
 - **Non-electronics guardrail**: Gracefully blocks out-of-domain requests
+- **Catalog grounding**: All product recommendations sourced from live inventory with visible rationale
 
-## Current Memory and Responsible AI Additions
-
-The current implementation extends the original graph with authenticated conversation memory:
+## Conversation Memory & Responsible AI
 
 1. `POST /api/ai/chat` accepts `conversationId`, `clientMessageId`, and an explicit personalization choice.
 2. `ConversationMemoryAgent` restores the owned transcript and latest checkpoint before supervision.
@@ -220,15 +356,21 @@ The current implementation extends the original graph with authenticated convers
 4. Duplicate client message IDs replay the stored response safely.
 5. `GET` and `DELETE /api/ai/conversations/:conversationId` provide owned resume and deletion controls.
 6. Anonymous chats remain browser-session-only and never load order-history context.
-
-The Responsible AI layer now requires catalog-grounded, in-stock recommendations with visible reasons. Search explanations identify category, budget, and availability filters. Popularity results disclose their review/rating basis and distinguish popularity from personal fit. JWT validation rejects bare IDs and invalid signatures, while authenticated chat requires a client message ID for retry safety.
-
-### Updated PC Advisor Flow
-
-The PC advisor is goal-first for natural shopping requests such as “build a PC for my son”: recipient task, usage intensity, budget, then optional technical refinement. CPU and GPU choices are automatically selected from compatible in-stock inventory unless the shopper explicitly requests a brand or component preference.
+7. The Responsible AI layer requires catalog-grounded, in-stock recommendations with visible reasons.
 
 ### Confirmed Cart Handoff
 
 Suggested product rows require confirmation before mutation. **Add & view cart** adds the product, clears the authenticated conversation or anonymous session memory, and redirects the shopper to `/cart`. Cancelling leaves the search and checkpoint intact.
 
 For the detailed implementation and QA checklist, see [AI-CHATBOT-MEMORY-GUARDRAILS.md](AI-CHATBOT-MEMORY-GUARDRAILS.md).
+
+---
+
+## Validation Commands
+
+```bash
+pnpm run typecheck            # Full workspace type check
+pnpm run build                # Full monorepo build (typecheck + all artifacts)
+pnpm --filter @workspace/api-server test   # Run agent test suite (16 tests)
+pnpm --filter @workspace/db run push       # Sync Drizzle schema with PostgreSQL
+```

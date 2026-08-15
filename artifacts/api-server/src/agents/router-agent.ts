@@ -131,13 +131,48 @@ function localFallbackParse(
     return { isGreeting: false, intent: 'gaming_build', reply: '' };
   }
 
+  if (
+    /\b(?:alternatives?|other options|something else)\b|\bdon'?t like (?:this|that)\b/i.test(
+      lower,
+    )
+  ) {
+    const recentContext = [...(history || [])]
+      .filter((entry) => entry.role === 'user')
+      .map((entry) => entry.content.toLowerCase())
+      .join(' ');
+    const category =
+      /\b(?:mobile|mobiles|phone|phones|iphone|galaxy|pixel)\b/.test(
+        recentContext,
+      )
+        ? 'Mobiles'
+        : /laptop|macbook|dell|hp/.test(recentContext)
+          ? 'Laptops'
+          : /headphone|earbud|speaker|audio/.test(recentContext)
+            ? 'Audio'
+            : /camera/.test(recentContext)
+              ? 'Cameras'
+              : /keyboard|mouse|accessor/.test(recentContext)
+                ? 'Accessories'
+                : undefined;
+    if (category) {
+      return {
+        isGreeting: false,
+        intent: 'product_search',
+        category,
+        sortByRating: true,
+        reply: '',
+      };
+    }
+  }
+
   // ── Compare intent fast-path ─────────────────────────────────────────────
   if (
     lower.includes(' vs ') ||
     lower.includes(' versus ') ||
     lower.startsWith('compare ') ||
     (lower.includes('compare') && lower.includes(' and ')) ||
-    (lower.includes('difference between') && (lower.includes('and') || lower.includes('vs')))
+    (lower.includes('difference between') &&
+      (lower.includes('and') || lower.includes('vs')))
   ) {
     return { isGreeting: false, intent: 'compare', reply: '' };
   }
@@ -289,8 +324,8 @@ function localFallbackParse(
     'college',
     'university',
     'engineering',
-    'gaming setup',        // Must include "setup" — not "gaming" alone
-    'gaming workstation',  // specific gaming workspace persona
+    'gaming setup', // Must include "setup" — not "gaming" alone
+    'gaming workstation', // specific gaming workspace persona
     'work from home',
     'professional',
     'office setup',
@@ -310,7 +345,7 @@ function localFallbackParse(
     'musician',
     'music production',
     'photographer',
-    'photography setup',   // must be specific to setup
+    'photography setup', // must be specific to setup
     'freelancer',
     'freelance',
     'remote work',
@@ -401,12 +436,16 @@ function localFallbackParse(
     return { isGreeting: false, intent: 'popular_products', reply: '' };
   }
 
+  const hasExplicitProductCategory =
+    /\b(?:mobile|mobiles|phone|phones|laptop|laptops|headphone|headphones|earbud|earbuds|speaker|speakers|audio|camera|cameras|keyboard|mouse|accessory|accessories)\b/.test(
+      lower,
+    );
   if (
     lower.includes('top pick') ||
-    lower.includes('best for me') ||
-    lower.includes('recommend') ||
-    lower.includes('suggestion') ||
-    lower.includes('something new')
+    (lower.includes('best for me') && !hasExplicitProductCategory) ||
+    (lower.includes('recommend') && !hasExplicitProductCategory) ||
+    (lower.includes('suggestion') && !hasExplicitProductCategory) ||
+    (lower.includes('something new') && !hasExplicitProductCategory)
   ) {
     return { isGreeting: false, intent: 'top_picks', reply: '' };
   }
@@ -430,8 +469,7 @@ function localFallbackParse(
   // ── Category / price detection for product_search ─────────────────────────
   let category: string | undefined;
   if (
-    lower.includes('mobile') ||
-    lower.includes('phone') ||
+    /\b(?:mobile|mobiles|phone|phones)\b/.test(lower) ||
     lower.includes('iphone') ||
     lower.includes('galaxy') ||
     lower.includes('pixel')
@@ -564,25 +602,25 @@ function localFallbackParse(
     }
   }
 
-  const matchK = lower.match(/(?:under|below|less than|\<)\s*(\d+)\s*k/);
-  if (matchK) {
-    maxPrice = parseInt(matchK[1], 10) * 1000;
-  } else {
-    const matchNum = lower.match(
-      /(?:under|below|less than|\<)\s*₹?\s*([\d,]+)/,
-    );
-    if (matchNum) {
-      maxPrice = parseInt(matchNum[1].replace(/,/g, ''), 10);
+  const toPrice = (value: string, unit?: string) => {
+    let amount = parseFloat(value.replace(/,/g, ''));
+    const normalizedUnit = unit?.toLowerCase();
+    if (normalizedUnit === 'k' || normalizedUnit === 'thousand') amount *= 1000;
+    if (['lakh', 'lakhs', 'lac', 'lacs', 'l'].includes(normalizedUnit ?? '')) {
+      amount *= 100000;
     }
-  }
+    return Math.round(amount);
+  };
+
+  const matchBelow = lower.match(
+    /(?:under|below|less than|<)\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lakh|lakhs|lac|lacs|l)?/,
+  );
+  if (matchBelow) maxPrice = toPrice(matchBelow[1], matchBelow[2]);
 
   const matchAbove = lower.match(
-    /(?:above|over|more than|starting|from)\s*₹?\s*([\d,]+)\s*k?/,
+    /(?:above|over|more than|starting|from)\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lakh|lakhs|lac|lacs|l)?/,
   );
-  if (matchAbove) {
-    const val = parseInt(matchAbove[1].replace(/,/g, ''), 10);
-    minPrice = matchAbove[0].includes('k') ? val * 1000 : val;
-  }
+  if (matchAbove) minPrice = toPrice(matchAbove[1], matchAbove[2]);
 
   let keyword: string | undefined;
   const keywordPatterns = [
@@ -671,7 +709,10 @@ async function classifyIntent(
   const provider = getAIProvider();
 
   const historyContext = history?.length
-    ? `\nConversation so far:\n${history.map((h) => `${h.role}: ${h.content}`).join('\n')}\n`
+    ? `\nRecent conversation:\n${history
+        .slice(-4)
+        .map((h) => `${h.role}: ${h.content.slice(-500)}`)
+        .join('\n')}\n`
     : '';
 
   const prompt = `${systemContext}
@@ -718,7 +759,13 @@ Analyze intent: greeting, orders, address, product_search, bundle_advisor, top_p
 Always write a natural, friendly conversational reply.`;
 
   try {
-    const result = await provider.generateStructuredJSON(prompt, INTENT_SCHEMA);
+    const result = await provider.generateStructuredJSON(
+      prompt,
+      INTENT_SCHEMA,
+      {
+        maxOutputTokens: 512,
+      },
+    );
     return result as unknown as ParsedIntent;
   } catch (error) {
     console.warn(
@@ -748,8 +795,25 @@ export class RouterAgent {
       return local;
     }
 
+    if (
+      local.intent === 'product_search' &&
+      (local.category ||
+        local.keyword ||
+        local.brands?.length ||
+        local.minPrice != null ||
+        local.maxPrice != null ||
+        local.sortByPrice ||
+        local.sortByRating)
+    ) {
+      return local;
+    }
+
     // Call LLM for open-ended product search / complex intent classification
-    const llmParsed = await classifyIntent(ctx.message, systemContext, ctx.history);
+    const llmParsed = await classifyIntent(
+      ctx.message,
+      systemContext,
+      ctx.history,
+    );
 
     // If local detected guided advisor or gaming build triggers, override LLM
     if (local.intent === 'guided_advisor' || local.intent === 'gaming_build') {

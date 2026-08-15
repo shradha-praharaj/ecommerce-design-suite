@@ -128,6 +128,23 @@ function extractBudgetRange(text: string): {
 } {
   const t = text.toLowerCase();
 
+  const parseAmount = (value: string, unit?: string) => {
+    let amount = parseFloat(value.replace(/,/g, ''));
+    const normalizedUnit = unit?.toLowerCase();
+    if (normalizedUnit === 'k' || normalizedUnit === 'thousand') amount *= 1000;
+    if (['lakh', 'lakhs', 'lac', 'lacs', 'l'].includes(normalizedUnit ?? '')) {
+      amount *= 100000;
+    }
+    return Math.round(amount);
+  };
+
+  const minimumMatch = t.match(
+    /(?:above|over|more than|starting|from)\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lakh|lakhs|lac|lacs|l)?/i,
+  );
+  if (minimumMatch) {
+    return { min: parseAmount(minimumMatch[1], minimumMatch[2]), max: null };
+  }
+
   const numMatch = t.match(
     /(?:under|below|less than|within|around|₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|lakh|lakhs|lac|lacs|l)?/i,
   );
@@ -429,7 +446,7 @@ export class GuidedProductAdvisorAgent implements Agent {
     }
 
     // ── STEP 3: Target Budget Range (if budget is missing) ───────────────────
-    if (!state.budgetMax) {
+    if (state.budgetMin == null && state.budgetMax == null) {
       let prompt = `💰 **What is your target budget for your ${state.useCase} ${state.category}?**`;
       let chips: string[] = [];
 
@@ -513,8 +530,14 @@ export class GuidedProductAdvisorAgent implements Agent {
       return buildNotFoundResponse(state.category, state.useCase);
     }
 
-    // Sort candidates by rating & specs matching use-case
-    candidates.sort((a, b) => Number(b.rating) - Number(a.rating));
+    // An explicit lower price bound signals a premium request, so surface the
+    // highest-priced in-stock options first instead of defaulting to rating.
+    const prefersPremium = state.budgetMin != null && state.budgetMax == null;
+    candidates.sort((a, b) =>
+      prefersPremium
+        ? Number(b.price) - Number(a.price)
+        : Number(b.rating) - Number(a.rating),
+    );
 
     const bestMatch = candidates[0];
     const alternatives = candidates.slice(1, 3);

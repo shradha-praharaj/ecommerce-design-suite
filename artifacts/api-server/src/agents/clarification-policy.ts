@@ -33,6 +33,8 @@ function hasPreference(parsed: ParsedIntent, message: string): boolean {
   return Boolean(
     parsed.keyword ||
     parsed.brands?.length ||
+    parsed.minPrice != null ||
+    parsed.maxPrice != null ||
     PERSONA_OR_USE_CASE_PATTERN.test(message) ||
     /\b(camera|battery|gaming|performance|display|rated|rating|show all)\b/i.test(
       message,
@@ -65,21 +67,28 @@ function extractPendingProductSearch(
 
   const lower = priorUserMessage.content.toLowerCase();
   const maxPriceMatch = lower.match(
-    /(?:under|below|less than|<)\s*₹?\s*([\d,]+)\s*(k)?/,
+    /(?:under|below|less than|<)\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lakh|lakhs|lac|lacs|l)?/,
   );
   const minPriceMatch = lower.match(
-    /(?:above|over|more than|starting|from)\s*₹?\s*([\d,]+)\s*(k)?/,
+    /(?:above|over|more than|starting|from)\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lakh|lakhs|lac|lacs|l)?/,
   );
-  const toPrice = (value: string, isThousands: boolean) =>
-    parseInt(value.replace(/,/g, ''), 10) * (isThousands ? 1000 : 1);
+  const toPrice = (value: string, unit?: string) => {
+    let amount = parseFloat(value.replace(/,/g, ''));
+    const normalizedUnit = unit?.toLowerCase();
+    if (normalizedUnit === 'k' || normalizedUnit === 'thousand') amount *= 1000;
+    if (['lakh', 'lakhs', 'lac', 'lacs', 'l'].includes(normalizedUnit ?? '')) {
+      amount *= 100000;
+    }
+    return Math.round(amount);
+  };
 
   return {
     category,
     maxPrice: maxPriceMatch
-      ? toPrice(maxPriceMatch[1], Boolean(maxPriceMatch[2]))
+      ? toPrice(maxPriceMatch[1], maxPriceMatch[2])
       : undefined,
     minPrice: minPriceMatch
-      ? toPrice(minPriceMatch[1], Boolean(minPriceMatch[2]))
+      ? toPrice(minPriceMatch[1], minPriceMatch[2])
       : undefined,
   };
 }

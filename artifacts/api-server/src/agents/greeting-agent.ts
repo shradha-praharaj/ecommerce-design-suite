@@ -16,12 +16,18 @@ export class GreetingAgent implements Agent {
 
     let reply = parsed.reply;
     if (!reply) {
-      const interests = userContext.interests?.length
-        ? userContext.interests.join(', ')
-        : 'electronics';
-
-      if (userContext.name) {
-        reply = `Welcome back, ${userContext.name}! 👋 Great to see you again. Based on your interests in **${interests}**, I can help you find deals or explore new products. What can I do for you today?`;
+      if (userId) {
+        const displayName = userContext.name || '';
+        if (userContext.interests?.length) {
+          const interests = userContext.interests.join(', ');
+          reply = displayName
+            ? `Welcome back, ${displayName}! 👋 Great to see you again. Based on your interests in **${interests}**, I can help you find deals or explore new products. What can I do for you today?`
+            : `Welcome back! 👋 Based on your interests in **${interests}**, I can help you find deals or explore new products. What can I do for you today?`;
+        } else {
+          reply = displayName
+            ? `Welcome back, ${displayName}! 👋 How can I assist you with your shopping today?`
+            : `Welcome back! 👋 How can I assist you with your shopping today?`;
+        }
       } else {
         reply = `Hello! 👋 I'm your ShopNow AI assistant. I can help you find the best deals on laptops, mobiles, cameras & more!\n\n💡 **Tip:** Log in to unlock personalised recommendations, order tracking, and saved addresses.`;
       }
@@ -29,7 +35,7 @@ export class GreetingAgent implements Agent {
 
     // Generate smart follow-ups based on user context
     const followUp: string[] = [];
-    if (userContext.name) {
+    if (userId) {
       if (userContext.interests?.length) {
         followUp.push(`New ${userContext.interests[0]} deals`);
       }

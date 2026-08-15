@@ -36,6 +36,7 @@ export class ProductSearchAgent implements Agent {
 
     // Intelligent cascading search: try specific → progressively broader
     let products = await this.cascadingSearch(parsed);
+    products = this.diversifyResults(products, parsed);
 
     // Generate contextual follow-up suggestions for multi-turn conversation
     const followUp = this.generateFollowUps(
@@ -204,12 +205,62 @@ export class ProductSearchAgent implements Agent {
       }
     }
 
+    const resultLimit =
+      !parsed.keyword &&
+      !parsed.brands?.length &&
+      (parsed.category === 'Mobiles' || parsed.category === 'Audio')
+        ? 18
+        : 6;
+
     return await db
       .select()
       .from(productsTable)
       .where(and(...conditions))
       .orderBy(sortOrder)
-      .limit(6);
+      .limit(resultLimit);
+  }
+
+  private diversifyResults(products: any[], parsed: ParsedIntent): any[] {
+    if (
+      products.length <= 1 ||
+      parsed.keyword ||
+      parsed.brands?.length ||
+      (parsed.category !== 'Mobiles' && parsed.category !== 'Audio')
+    ) {
+      return products.slice(0, 6);
+    }
+
+    const selected: any[] = [];
+    const selectedIds = new Set<number>();
+    const add = (product: any) => {
+      if (!selectedIds.has(product.id) && selected.length < 6) {
+        selected.push(product);
+        selectedIds.add(product.id);
+      }
+    };
+
+    // Unbounded audio recommendations should also include low, mid, and high price points.
+    if (parsed.category === 'Audio' && !parsed.minPrice && !parsed.maxPrice) {
+      const byPrice = [...products].sort(
+        (left, right) => Number(left.price) - Number(right.price),
+      );
+      add(byPrice[0]);
+      add(byPrice[Math.floor(byPrice.length / 2)]);
+      add(byPrice[byPrice.length - 1]);
+    }
+
+    // Guarantee brand choice before filling remaining result slots.
+    const seenBrands = new Set<string>();
+    for (const product of products) {
+      const brand = String(product.brand ?? '').toLowerCase();
+      if (brand && !seenBrands.has(brand)) {
+        seenBrands.add(brand);
+        add(product);
+      }
+    }
+
+    for (const product of products) add(product);
+    return selected;
   }
 
   private generateFollowUps(

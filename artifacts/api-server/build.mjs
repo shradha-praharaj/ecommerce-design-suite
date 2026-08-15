@@ -70,7 +70,6 @@ async function buildAll() {
       "@azure/*",
       "@opentelemetry/*",
       "@google-cloud/*",
-      "@google/*",
       "googleapis",
       "firebase-admin",
       "@parcel/watcher",
@@ -127,6 +126,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
 
   if (watchMode) {
     const context = await createEsbuildContext(buildOptions);
+    await context.rebuild();
     await context.watch();
     console.log("Watching API server source files for changes...");
     return;

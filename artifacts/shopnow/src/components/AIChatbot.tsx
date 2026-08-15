@@ -67,6 +67,8 @@ interface Message {
   products?: any[];
   orders?: OrderInfo[];
   requiresLogin?: boolean;
+  requiresHumanReview?: boolean;
+  manualSearchMode?: boolean;
   followUp?: string[];
   compareData?: CompareData;
   explanation?: {
@@ -155,6 +157,7 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
   });
   const [isHydrating, setIsHydrating] = useState(false);
   const [personalizationEnabled, setPersonalizationEnabled] = useState(false);
+  const [manualSearchMode, setManualSearchMode] = useState(false);
   const [input, setInput] = useState('');
   const [hasOpened, setHasOpened] = useState(persisted.current.hasOpened);
   const [selectedCartProducts, setSelectedCartProducts] = useState<any[]>([]);
@@ -350,6 +353,9 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
       // Invalidate and refetch cart cache immediately so UI header badge, cart drawer & cart page update in real-time
       queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
       queryClient.refetchQueries({ queryKey: getGetCartQueryKey() });
+      if (typeof data.manualSearchMode === 'boolean') {
+        setManualSearchMode(data.manualSearchMode);
+      }
 
       // Ensure orders are included even if backend intent detection missed
       let orders = data.orders;
@@ -386,6 +392,8 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
           products: data.products,
           orders,
           requiresLogin: data.requiresLogin,
+          requiresHumanReview: data.requiresHumanReview,
+          manualSearchMode: data.manualSearchMode,
           followUp: data.followUp,
           explanation: data.explanation,
         },
@@ -552,6 +560,13 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
     const userMsg = input.trim();
     setInput('');
 
+    if (manualSearchMode) {
+      setIsOpen(false);
+      setIsExpanded(false);
+      setLocation(`/search?q=${encodeURIComponent(userMsg)}`);
+      return;
+    }
+
     // If we're in recommendation flow, route to recommend endpoint
     if (pendingRecommendContext) {
       handleRecommend(pendingRecommendContext, userMsg);
@@ -564,6 +579,13 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
 
   const handleQuickAction = (query: string) => {
     const lower = query.toLowerCase().trim();
+
+    if (manualSearchMode && !lower.includes('turn on ai suggestions')) {
+      setIsOpen(false);
+      setIsExpanded(false);
+      setLocation(`/search?q=${encodeURIComponent(query)}`);
+      return;
+    }
 
     // Instant client-side navigation for action chips
     if (
@@ -822,6 +844,8 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
               {/* Messages */}
               <div
                 ref={chatContainerRef}
+                aria-live="polite"
+                aria-relevant="additions text"
                 className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 2xl:p-6 space-y-3 sm:space-y-4 bg-neutral-50 dark:bg-neutral-950 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
               >
                 {/* Empty state: guest */}
@@ -902,9 +926,19 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                               </div>
                             )}
                             <div className="max-w-[90%] sm:max-w-[85%] lg:max-w-[80%] 2xl:max-w-[75%]">
-                              {msg.role === 'user' && (
+                              {msg.role === 'user' ? (
                                 <div className="mb-1 pr-1 text-right text-[10px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
                                   You
+                                </div>
+                              ) : (
+                                <div className="mb-1 pl-1 text-left text-[10px] font-medium text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
+                                  <span>ShopNow AI</span>
+                                  <span className="text-neutral-300 dark:text-neutral-600">
+                                    •
+                                  </span>
+                                  <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    Catalog Grounded
+                                  </span>
                                 </div>
                               )}
                               <div
@@ -954,6 +988,15 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                                   >
                                     Log In <ChevronRight size={12} />
                                   </Link>
+                                )}
+                                {msg.requiresHumanReview && (
+                                  <div
+                                    role="status"
+                                    className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                                  >
+                                    Human review requested. Do not submit
+                                    payment until it is complete.
+                                  </div>
                                 )}
                               </div>
                             </div>

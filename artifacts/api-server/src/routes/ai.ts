@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   checkAIAvailability,
+  checkLLMQuotaStatus,
   SupervisorAgent,
   loadUserContext,
   conversationMemoryAgent,
@@ -14,9 +15,34 @@ export const aiRouter = Router();
 
 const supervisorAgent = new SupervisorAgent();
 
+/**
+ * Basic AI availability check
+ */
 aiRouter.get('/status', async (_req, res) => {
   const status = await checkAIAvailability();
   return res.status(status.available ? 200 : 503).json(status);
+});
+
+/**
+ * Detailed LLM quota & rate limit diagnostic endpoint
+ * Returns:
+ * - canUseModel: boolean (whether you can use LLM right now)
+ * - isLimitExhausted: boolean (whether free limits are exhausted)
+ * - activeProvider / activeModel
+ * - detailed status for both Google Gemini and OpenCode
+ */
+aiRouter.get('/quota-status', async (_req, res) => {
+  try {
+    const quotaInfo = await checkLLMQuotaStatus();
+    return res.status(quotaInfo.canUseModel ? 200 : 429).json(quotaInfo);
+  } catch (error) {
+    return res.status(500).json({
+      status: 'error',
+      canUseModel: false,
+      isLimitExhausted: true,
+      error: error instanceof Error ? error.message : 'Failed to query quota status',
+    });
+  }
 });
 
 aiRouter.post('/chat', async (req, res) => {
@@ -79,10 +105,12 @@ aiRouter.post('/chat', async (req, res) => {
         });
       }
     }
-    const userContext =
-      userId && memory?.personalizationEnabled
-        ? await loadUserContext(userId)
-        : {};
+    const userContext = userId
+      ? await loadUserContext(
+          userId,
+          memory?.personalizationEnabled ?? personalizationEnabled === true,
+        )
+      : {};
 
     const response = await supervisorAgent.execute({
       message,

@@ -38,6 +38,8 @@ export interface BuildBrief {
   formFactor?: 'compact' | 'mid' | 'full';
   cpuBrand?: 'AMD' | 'Intel' | null;
   gpuBrand?: 'AMD' | 'Nvidia' | null;
+  /** Premium requests favor the highest-priced compatible in-stock components. */
+  selectionMode?: 'balanced' | 'premium';
 }
 
 export type ComponentKey =
@@ -79,7 +81,7 @@ const BUDGET_RATIOS: Record<
   gaming: {
     gpu: 0.35,
     processor: 0.18,
-    motherboard: 0.10,
+    motherboard: 0.1,
     ram: 0.08,
     storage: 0.08,
     psu: 0.08,
@@ -89,11 +91,11 @@ const BUDGET_RATIOS: Record<
     peripheral: 0.0,
   },
   streaming: {
-    gpu: 0.30,
-    processor: 0.20,
-    motherboard: 0.10,
-    ram: 0.10,
-    storage: 0.10,
+    gpu: 0.3,
+    processor: 0.2,
+    motherboard: 0.1,
+    ram: 0.1,
+    storage: 0.1,
     psu: 0.08,
     case: 0.06,
     cooler: 0.06,
@@ -103,7 +105,7 @@ const BUDGET_RATIOS: Record<
   creator: {
     gpu: 0.26,
     processor: 0.22,
-    motherboard: 0.10,
+    motherboard: 0.1,
     ram: 0.12,
     storage: 0.12,
     psu: 0.08,
@@ -115,7 +117,7 @@ const BUDGET_RATIOS: Record<
   workstation: {
     gpu: 0.24,
     processor: 0.24,
-    motherboard: 0.10,
+    motherboard: 0.1,
     ram: 0.14,
     storage: 0.12,
     psu: 0.08,
@@ -141,6 +143,7 @@ async function getCandidates(
   componentType: string,
   maxPrice: number,
   brandHint?: string | null,
+  selectionMode: BuildBrief['selectionMode'] = 'balanced',
 ): Promise<Product[]> {
   const conditions = [
     eq(productsTable.department, 'Gaming'),
@@ -154,7 +157,9 @@ async function getCandidates(
     .from(productsTable)
     .where(and(...conditions))
     .orderBy(
-      sql`${productsTable.rating} desc, ${productsTable.reviewCount} desc`,
+      selectionMode === 'premium'
+        ? sql`CAST(${productsTable.price} AS numeric) desc, ${productsTable.rating} desc`
+        : sql`${productsTable.rating} desc, ${productsTable.reviewCount} desc`,
     );
 
   // Prefer brand hint but don't require it
@@ -253,13 +258,17 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
       'Processor',
       budgets.processor!,
       brief.cpuBrand,
+      brief.selectionMode,
     );
     const picked = pickBest(candidates);
     if (picked) {
       components.push({
         componentKey: 'processor',
         product: picked,
-        reason: `Best rated ${picked.brand} processor within ₹${budgets.processor} budget`,
+        reason:
+          brief.selectionMode === 'premium'
+            ? `Premium ${picked.brand} processor within ₹${budgets.processor} allocation`
+            : `Best rated ${picked.brand} processor within ₹${budgets.processor} budget`,
       });
     } else {
       compatibilityErrors.push(
@@ -274,6 +283,7 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
       'Graphics Card',
       budgets.gpu!,
       brief.gpuBrand,
+      brief.selectionMode,
     );
     const picked = pickBest(candidates);
     if (picked) {
@@ -296,7 +306,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
 
   // RAM
   {
-    const candidates = await getCandidates('RAM', budgets.ram!);
+    const candidates = await getCandidates(
+      'RAM',
+      budgets.ram!,
+      undefined,
+      brief.selectionMode,
+    );
     // Prefer higher capacity for streaming/creator workloads
     const sorted = [...candidates].sort((a, b) => {
       const specA = getSpecs(a);
@@ -311,7 +326,13 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
       );
       return capB - capA;
     });
-    const picked = pickBest(brief.needsStreaming ? sorted : candidates);
+    const picked = pickBest(
+      brief.selectionMode === 'premium'
+        ? candidates
+        : brief.needsStreaming
+          ? sorted
+          : candidates,
+    );
     if (picked) {
       components.push({
         componentKey: 'ram',
@@ -325,7 +346,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
 
   // Storage
   {
-    const candidates = await getCandidates('Storage', budgets.storage!);
+    const candidates = await getCandidates(
+      'Storage',
+      budgets.storage!,
+      undefined,
+      brief.selectionMode,
+    );
     // Prefer NVMe/SSD for gaming
     const ssdFirst = [...candidates].sort((a, b) => {
       const specA = getSpecs(a);
@@ -338,7 +364,9 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
       );
       return isNvmeB ? 1 : isNvmeA ? -1 : 0;
     });
-    const picked = pickBest(ssdFirst);
+    const picked = pickBest(
+      brief.selectionMode === 'premium' ? candidates : ssdFirst,
+    );
     if (picked) {
       components.push({
         componentKey: 'storage',
@@ -352,7 +380,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
 
   // CPU Cooler
   {
-    const candidates = await getCandidates('CPU Cooler', budgets.cooler!);
+    const candidates = await getCandidates(
+      'CPU Cooler',
+      budgets.cooler!,
+      undefined,
+      brief.selectionMode,
+    );
     // Prefer AIO for streaming/creator (thermal headroom), Air for budget builds
     const coolerTypePref =
       brief.needsStreaming || brief.workload === 'creator' ? 'AIO' : 'Air';
@@ -381,7 +414,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
     const estimatedDraw = estimatePowerDraw(components);
     const recommendedPsuWattage = Math.ceil((estimatedDraw * 1.25) / 50) * 50; // 25% headroom
 
-    const candidates = await getCandidates('Power Supply', budgets.psu!);
+    const candidates = await getCandidates(
+      'Power Supply',
+      budgets.psu!,
+      undefined,
+      brief.selectionMode,
+    );
     // Pick PSU with sufficient wattage
     const sufficient = candidates.filter((c) => {
       const specs = getSpecs(c);
@@ -405,7 +443,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
 
   // Motherboard (if catalog has it)
   if (hasMotherboard && budgets.motherboard) {
-    const candidates = await getCandidates('Motherboard', budgets.motherboard);
+    const candidates = await getCandidates(
+      'Motherboard',
+      budgets.motherboard,
+      undefined,
+      brief.selectionMode,
+    );
     const picked = pickBest(candidates);
     if (picked) {
       components.push({
@@ -418,7 +461,12 @@ export async function buildGamingPc(brief: BuildBrief): Promise<BuildResult> {
 
   // Case (if catalog has it)
   if (hasCase && budgets.case) {
-    const candidates = await getCandidates('Case', budgets.case);
+    const candidates = await getCandidates(
+      'Case',
+      budgets.case,
+      undefined,
+      brief.selectionMode,
+    );
     const picked = pickBest(candidates);
     if (picked) {
       components.push({

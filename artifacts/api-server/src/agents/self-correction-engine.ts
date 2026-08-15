@@ -35,7 +35,11 @@ export function detectCorrection(message: string): CorrectionAnalysis {
     lower.includes('price') ||
     lower.includes('cost') ||
     lower.includes('lakh') ||
-    lower.includes('k')
+    lower.includes('k') ||
+    lower.includes('expensive') ||
+    lower.includes('cheap') ||
+    lower.includes('affordable') ||
+    /(?:under|below|above|around|less than|more than|\₹)\s*\d+/.test(lower)
   ) {
     type = 'budget';
   } else if (

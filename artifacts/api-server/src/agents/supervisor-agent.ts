@@ -1,148 +1,97 @@
-import { AgentGraph } from './agent-graph.js';
 import {
-  createProductSearchClarification,
-  mergePendingProductSearch,
-  needsProductSearchClarification,
-} from './clarification-policy.js';
-import { GraphRunner } from './graph-runner.js';
+  createCompiledGraph,
+  type CompiledChatGraph,
+} from './langgraph/index.js';
 import { GuardrailAgent } from './guardrail-agent.js';
-import { RouterAgent } from './router-agent.js';
-import {
-  detectCorrection,
-  formatSelfCorrectionPrefix,
-} from './self-correction-engine.js';
+import { responsibleAIAgent } from './responsible-ai-agent.js';
 import type { AgentContext, AgentResponse } from './types.js';
 
 // Build context-aware fallback chips based on user message content
-function buildContextualFallbackChips(message: string): string[] {
+export function detectPersona(
+  message: string,
+  existingPersona?: string | null,
+): string | null {
+  if (existingPersona) return existingPersona;
   const lower = message.toLowerCase();
-
-  if (/tv|television|smart tv/.test(lower)) {
-    return ['Show me monitors', 'Show premium audio', "What's trending?"];
+  if (
+    /\b(my son|my daughter|my kid|for my child|for my boy|for my girl|for my children)\b/.test(
+      lower,
+    )
+  ) {
+    return 'parent';
   }
-  if (/tablet|ipad/.test(lower)) {
-    return ['Show me ultrabook laptops', 'Show me premium phones'];
+  if (
+    /\b(i'?m a student|for school|for college|for university|for classes|for studies|for studying)\b/.test(
+      lower,
+    )
+  ) {
+    return 'student';
   }
-  if (/return|refund|exchange/.test(lower)) {
-    return ['Show my orders', 'Track my delivery'];
+  if (
+    /\b(i'?m a gamer|for esports|hardcore gaming|competitive gaming|fps games)\b/.test(
+      lower,
+    )
+  ) {
+    return 'gamer';
   }
-  if (/compare|vs|versus/.test(lower)) {
-    return ['Compare iPhone 15 vs Samsung S24', 'Show best mobiles'];
+  if (
+    /\b(for work|office use|workstation|for coding|for software development|for video editing|for architecture|for cad|professional)\b/.test(
+      lower,
+    )
+  ) {
+    return 'professional';
   }
-  if (/mobile|phone/.test(lower)) {
-    return ['Help me pick a mobile', 'Show budget phones', 'Show premium phones'];
+  if (
+    /\b(for my wife|for my husband|for my partner|anniversary|birthday gift|for my brother|for my sister|gift for)\b/.test(
+      lower,
+    )
+  ) {
+    return 'gift_buyer';
   }
-  if (/laptop/.test(lower)) {
-    return ['Help me pick a laptop', 'Show budget laptops', 'Show gaming laptops'];
-  }
-  if (/gaming|pc|build/.test(lower)) {
-    return ['Build a Gaming PC', 'Show gaming laptops'];
-  }
-  if (/deal|offer|sale|discount/.test(lower)) {
-    return ['Show trending products', 'Show top picks for me'];
-  }
-
-  // Generic fallback chips
-  return [
-    'Help me pick a mobile',
-    'Build a Gaming PC',
-    'Show Trending Products',
-    'My Orders',
-  ];
+  return null;
 }
 
 export class SupervisorAgent {
   name = 'SupervisorAgent';
 
-  private readonly router = new RouterAgent();
-  private readonly graphRunner = new GraphRunner(new AgentGraph());
+  private compiledGraph: CompiledChatGraph | null = null;
   private readonly guardrail = new GuardrailAgent();
 
-  async execute(ctx: AgentContext): Promise<AgentResponse> {
-    const correctionAnalysis = detectCorrection(ctx.message);
-    if (correctionAnalysis.isCorrection) {
-      console.log(
-        `[SupervisorAgent] Self-correction triggered (${correctionAnalysis.correctionType}): "${ctx.message}"`,
-      );
+  async getGraph(): Promise<CompiledChatGraph> {
+    if (!this.compiledGraph) {
+      this.compiledGraph = await createCompiledGraph(process.env.DATABASE_URL);
     }
+    return this.compiledGraph;
+  }
 
+  async execute(ctx: AgentContext): Promise<AgentResponse> {
     try {
-      const parsed = mergePendingProductSearch(
-        ctx,
-        await this.router.classifyIntent(ctx),
+      const responsibleResponse = await responsibleAIAgent.handle(ctx);
+      if (responsibleResponse) return responsibleResponse;
+
+      const graph = await this.getGraph();
+      const threadId = ctx.userId ? `user-${ctx.userId}` : `anon-${Date.now()}`;
+
+      const result = await graph.invoke(
+        {
+          message: ctx.message,
+          userId: ctx.userId,
+          userContext: ctx.userContext,
+          history: ctx.history ?? [],
+          checkpoint: ctx.checkpoint ?? null,
+        },
+        { configurable: { thread_id: threadId } },
       );
 
-      if (
-        (!parsed.intent || parsed.intent === 'unknown') &&
-        (ctx.checkpoint?.activeAgent === 'gaming_build' ||
-          ctx.checkpoint?.activeAgent === 'guided_advisor')
-      ) {
-        parsed.intent = ctx.checkpoint.activeAgent;
+      if (result.agentResponse) {
+        return result.agentResponse;
       }
 
-      if (needsProductSearchClarification(ctx, parsed)) {
-        console.log(
-          '[SupervisorAgent] Requesting product category clarification',
-        );
-        return this.guardrail.finalize(
-          ctx,
-          createProductSearchClarification(ctx, parsed),
-        );
-      }
-
-      const response = await this.graphRunner.run(ctx, parsed);
-      response.checkpoint = {
-        ...(ctx.checkpoint ?? { version: 1 }),
-        activeAgent: parsed.intent ?? null,
-        personalizationEnabled: ctx.checkpoint?.personalizationEnabled ?? false,
-      };
-
-      // If user corrected the AI, prepend self-correction acknowledgment
-      if (correctionAnalysis.isCorrection && response.reply) {
-        const prefix = formatSelfCorrectionPrefix(correctionAnalysis);
-        if (!response.reply.startsWith('💡')) {
-          response.reply = prefix + response.reply;
-        }
-      }
-
-      // ── Secondary recovery: empty response guard ────────────────────────
-      // If we returned no products AND a very short reply, something went wrong
-      if (
-        response.products?.length === 0 &&
-        (!response.reply || response.reply.length < 30) &&
-        !response.requiresLogin
-      ) {
-        console.warn(
-          '[SupervisorAgent] Empty response detected — injecting recovery guidance',
-        );
-        response.reply =
-          (response.reply || '') +
-          `\n\nI may not have fully understood your request. Let me help you navigate:\n\n` +
-          `Could you clarify what you're looking for? For example:\n` +
-          `• **"Help me pick a mobile under ₹20,000"**\n` +
-          `• **"Build a gaming PC for 1.5 lakh"**\n` +
-          `• **"Show my orders"**`;
-        response.followUp = buildContextualFallbackChips(ctx.message);
-      }
-
-      if (response.products?.length && !response.explanation) {
-        response.explanation = {
-          why: [
-            'These items match the request using the product catalog and current availability.',
-          ],
-          tradeoffs: [
-            'You can ask for a different budget, brand, or sorting preference and I will re-rank them.',
-          ],
-          source: 'catalog',
-        };
-      }
-
-      return this.guardrail.finalize(ctx, response);
+      throw new Error('Graph execution did not produce an agent response');
     } catch (error) {
-      console.error('[SupervisorAgent] Error in execution graph:', error);
+      console.error('[SupervisorAgent] Error in LangGraph execution:', error);
 
       // Fault-tolerant self-healing fallback response
-      const contextualChips = buildContextualFallbackChips(ctx.message);
       const fallbackResponse: AgentResponse = {
         reply:
           '💡 **I noticed a hiccup while processing your request.** My apologies!\n\n' +
@@ -153,7 +102,12 @@ export class SupervisorAgent {
           '• **"My recent orders"** — order tracking',
         products: [],
         orders: [],
-        followUp: contextualChips,
+        followUp: [
+          'Help me pick a mobile',
+          'Build a Gaming PC',
+          'Show Trending Products',
+          'My Orders',
+        ],
         userContext: ctx.userContext
           ? {
               name: ctx.userContext.name,

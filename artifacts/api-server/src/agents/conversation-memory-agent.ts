@@ -6,6 +6,7 @@ import {
 } from '@workspace/db';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { ConversationCheckpoint } from './types.js';
+import { privacyGuard } from './privacy-guard.js';
 
 const MAX_RESTORED_MESSAGES = 24;
 
@@ -27,6 +28,7 @@ function normalizeCheckpoint(
     category: state.category ?? null,
     goal: state.goal ?? null,
     recipient: state.recipient ?? null,
+    persona: state.persona ?? null,
     usageIntensity: state.usageIntensity ?? null,
     budgetMin: state.budgetMin ?? null,
     budgetMax: state.budgetMax ?? null,
@@ -143,24 +145,25 @@ export class ConversationMemoryAgent {
         .limit(1);
       const sequence = (lastMessage?.sequence ?? 0) + 1;
 
+      const redactedUserMessage = privacyGuard.redactPII(input.userMessage);
+      const rawAssistantContent =
+        typeof input.assistantResponse === 'object' && input.assistantResponse
+          ? String((input.assistantResponse as { reply?: unknown }).reply ?? '')
+          : String(input.assistantResponse);
+      const redactedAssistantContent = privacyGuard.redactPII(rawAssistantContent);
+
       await tx.insert(chatMessagesTable).values([
         {
           conversationId: input.conversationId,
           role: 'user',
-          content: input.userMessage,
+          content: redactedUserMessage,
           sequence,
           clientMessageId: input.clientMessageId,
         },
         {
           conversationId: input.conversationId,
           role: 'assistant',
-          content:
-            typeof input.assistantResponse === 'object' &&
-            input.assistantResponse
-              ? String(
-                  (input.assistantResponse as { reply?: unknown }).reply ?? '',
-                )
-              : String(input.assistantResponse),
+          content: redactedAssistantContent,
           responseData: input.assistantResponse,
           sequence: sequence + 1,
         },
@@ -231,7 +234,7 @@ export class ConversationMemoryAgent {
       .select({
         conversationId: chatMessagesTable.conversationId,
         sequence: chatMessagesTable.sequence,
-        responseData: chatMessagesTable.responseData,
+        role: chatMessagesTable.role,
       })
       .from(chatMessagesTable)
       .innerJoin(
@@ -246,16 +249,29 @@ export class ConversationMemoryAgent {
       )
       .limit(1);
     const match = matches[0];
-    if (
-      !match ||
-      !match.responseData ||
-      typeof match.responseData !== 'object'
-    ) {
+    if (!match || match.role !== 'user') {
       return null;
     }
+
+    const assistant = await db
+      .select({ responseData: chatMessagesTable.responseData })
+      .from(chatMessagesTable)
+      .where(
+        and(
+          eq(chatMessagesTable.conversationId, match.conversationId),
+          eq(chatMessagesTable.sequence, match.sequence + 1),
+        ),
+      )
+      .limit(1);
+
+    const responseData = assistant[0]?.responseData;
+    if (!responseData || typeof responseData !== 'object') {
+      return null;
+    }
+
     return {
       conversationId: match.conversationId,
-      response: match.responseData as Record<string, unknown>,
+      response: responseData as Record<string, unknown>,
     };
   }
 

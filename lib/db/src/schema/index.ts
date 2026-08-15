@@ -6,3 +6,4 @@ export * from './reviews';
 export * from './coupons';
 export * from './coupon-redemptions';
 export * from './conversations';
+export * from './ai-preferences';

@@ -24,6 +24,12 @@ import type {
   AgentResponse,
   ParsedIntent,
 } from './types.js';
+import {
+  detectPCBuilderExpertise,
+  getAdaptiveFollowUpForExpertise,
+  getNextFieldForExpertise,
+  type ExpertiseLevel,
+} from './pc-builder-expertise.js';
 
 // ─── Stockpile brand discovery helpers ──────────────────────────────────────
 
@@ -89,12 +95,15 @@ function extractBudget(text: string): number | null {
   // Strip out model names/spec words that contain numbers (e.g. ryzen 5, core i7, rtx 4070, rx 7900, 1080p, 1440p, 4k, ddr5)
   // so hardware model numbers don't get misparsed as user budgets!
   const sanitized = text
-    .replace(/(?:ryzen|core\s*i|rtx|gtx|rx|radeon|ddr|ghz|mhz|fps|hz|1080p|1440p|2160p|4k|2k)\s*\d+/gi, '')
+    .replace(
+      /(?:ryzen|core\s*i|rtx|gtx|rx|radeon|ddr|ghz|mhz|fps|hz|1080p|1440p|2160p|4k|2k)\s*\d+/gi,
+      '',
+    )
     .replace(/\b(i3|i5|i7|i9)\b/gi, '');
 
   // Look for explicit currency/budget pattern first
   const explicitMatch = sanitized.match(
-    /(?:budget|spend|cost|₹|rs\.?|inr|under|around|approx)\s*:?\s*([\d,]+(?:\.\d+)?)\s*(k|lakh|lakhs|lac|lacs|l)?/i,
+    /(?:budget|spend|cost|₹|rs\.?|inr|under|below|around|approx|above|over|more than|starting|from)\s*:?\s*([\d,]+(?:\.\d+)?)\s*(k|lakh|lakhs|lac|lacs|l)?/i,
   );
 
   let match = explicitMatch;
@@ -128,11 +137,19 @@ function extractBudget(text: string): number | null {
   return amount >= 20000 ? Math.round(amount) : null;
 }
 
+function hasMinimumBudgetRequest(text: string): boolean {
+  return /\b(?:above|over|more than|starting from)\s*(?:₹|rs\.?|inr)?\s*[\d,.]+\s*(?:k|thousand|lakh|lakhs|lac|lacs|l)\b/i.test(
+    text,
+  );
+}
+
 function extractWorkload(text: string): BuildBrief['workload'] | null {
   const t = text.toLowerCase();
   if (/stream|broadcast|obs|📡/.test(t)) return 'streaming';
-  if (/creat|video edit|render|3d|blender|premiere|🎬/.test(t)) return 'creator';
-  if (/workstation|cad|simulation|professional|heavy|💼/.test(t)) return 'workstation';
+  if (/creat|video edit|render|3d|blender|premiere|🎬/.test(t))
+    return 'creator';
+  if (/workstation|cad|simulation|professional|heavy|💼/.test(t))
+    return 'workstation';
   if (/game|gaming|play|fps|esport|🎮/.test(t)) return 'gaming';
   return null;
 }
@@ -149,7 +166,12 @@ function extractDisplay(text: string): BuildBrief['targetDisplay'] | null {
 // CPU preference — 'auto' means user said "decide for me"
 function extractCpuPreference(text: string): 'AMD' | 'Intel' | 'auto' | null {
   const t = text.toLowerCase();
-  if (/decide|you choose|let ai|auto|any|no preference|doesn.t matter|dont mind|don.t care|🤖/.test(t)) return 'auto';
+  if (
+    /decide|you choose|let ai|auto|any|no preference|doesn.t matter|dont mind|don.t care|🤖/.test(
+      t,
+    )
+  )
+    return 'auto';
   if (/\bamd\b|ryzen|🔴/.test(t)) return 'AMD';
   if (/\bintel\b|core\s*i[3579]|🔵/.test(t)) return 'Intel';
   return null;
@@ -158,7 +180,12 @@ function extractCpuPreference(text: string): 'AMD' | 'Intel' | 'auto' | null {
 // GPU preference — 'auto' means user said "decide for me"
 function extractGpuPreference(text: string): 'AMD' | 'Nvidia' | 'auto' | null {
   const t = text.toLowerCase();
-  if (/decide|you choose|let ai|auto|any|no preference|doesn.t matter|dont mind|don.t care|🤖/.test(t)) return 'auto';
+  if (
+    /decide|you choose|let ai|auto|any|no preference|doesn.t matter|dont mind|don.t care|🤖/.test(
+      t,
+    )
+  )
+    return 'auto';
   if (/\bamd\b|radeon|rx \d|🔴/.test(t)) return 'AMD';
   if (/nvidia|geforce|rtx|gtx|🟢/.test(t)) return 'Nvidia';
   return null;
@@ -200,6 +227,8 @@ function isConfirmation(text: string): boolean {
 
 interface PartialBrief {
   budget?: number;
+  minimumBudget?: boolean;
+  premiumPreference?: boolean;
   workload?: BuildBrief['workload'];
   usageIntensity?: 'occasional' | 'daily' | 'heavy';
   // 'auto' = user said "decide for me"; undefined = not answered yet
@@ -352,6 +381,14 @@ function extractBriefFromHistory(
 
   // Understand the recipient's time commitment before asking about components.
   const allUserText = allUserMessages.join(' ').toLowerCase();
+  brief.minimumBudget = allUserMessages.some(hasMinimumBudgetRequest);
+  brief.premiumPreference =
+    /\b(premium|flagship|high[- ]end|top[- ]tier|more expensive|higher[- ]end)\b/.test(
+      allUserText,
+    ) ||
+    /\b(?:above|over|more than)\s*(?:₹|rs\.?|inr)?\s*[\d,.]+\s*(?:k|thousand|lakh|lakhs|lac|lacs|l)\b/.test(
+      allUserText,
+    );
   if (/occasion|weekend|sometimes|few hours/.test(allUserText)) {
     brief.usageIntensity = 'occasional';
   } else if (/every day|daily|school days|regularly/.test(allUserText)) {
@@ -425,6 +462,12 @@ function extractBriefFromHistory(
   return brief;
 }
 
+function getBuildBudget(brief: PartialBrief): number {
+  if (!brief.budget) return 100000;
+  if (!brief.minimumBudget) return brief.budget;
+  return Math.ceil((brief.budget * 1.1) / 5000) * 5000;
+}
+
 // ─── Agent ────────────────────────────────────────────────────────────────────
 
 export class GamingBuildAdvisorAgent implements Agent {
@@ -436,6 +479,12 @@ export class GamingBuildAdvisorAgent implements Agent {
   ): Promise<AgentResponse> {
     const { message, userId, history = [] } = ctx;
     const lowerMsg = message.toLowerCase();
+
+    // ── STEP 1: DETECT USER EXPERTISE LEVEL ────────────────────────────────
+    const expertise = detectPCBuilderExpertise(message, history);
+    console.log(
+      `[GamingBuildAdvisor] Detected expertise: ${expertise.level} (confidence: ${expertise.confidence.toFixed(2)}) | Keywords: ${expertise.technicalKeywords.slice(0, 5).join(', ')}`,
+    );
 
     // ── Extract brief from conversation history ────────────────────────────
     const brief = extractBriefFromHistory(history, message);
@@ -543,13 +592,14 @@ export class GamingBuildAdvisorAgent implements Agent {
     if (isCouponRequest && brief.budget) {
       try {
         const result = await buildGamingPc({
-          budget: brief.budget,
+          budget: getBuildBudget(brief),
           workload: brief.workload ?? 'gaming',
           targetDisplay: brief.targetDisplay ?? '1440p144',
           needsStreaming: brief.needsStreaming ?? false,
           includePeripherals: false,
           cpuBrand: brief.cpuBrand ?? null,
           gpuBrand: brief.gpuBrand ?? null,
+          selectionMode: brief.premiumPreference ? 'premium' : 'balanced',
         });
 
         const total = result.totalPrice;
@@ -608,46 +658,61 @@ export class GamingBuildAdvisorAgent implements Agent {
       return this.confirmAndAddToCart(ctx, history);
     }
 
-    // ── Ask outcome-focused questions before technical choices ──────────────
-    if (!brief.workload) {
-      return this.askQuestion(
-        `🖥️ **Let's build the right PC for the person who will use it!**\n\n🎯 **What will they primarily do on this PC?**\n> _For example: games, schoolwork, video editing, streaming, or a mix._`,
-        ctx,
-        [
-          '🎮 Pure Gaming & Esports',
-          '🎬 Video Editing & Content Creation',
-          '📡 Live Streaming & Gaming',
-          '💼 Heavy Workstation & CAD',
-        ],
-      );
+    // ── STEP 2: ADAPTIVE FLOW BASED ON EXPERTISE ───────────────────────────
+    const nextField = getNextFieldForExpertise(expertise.level, brief);
+    const skipFields = nextField.skipFields ?? [];
+
+    // Skip "workload" and "usageIntensity" for experts; they're focused on components
+    if (expertise.level === 'expert' && !brief.cpuPreference) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
     }
 
-    if (!brief.usageIntensity) {
-      return this.askQuestion(
-        `👍 **${brief.workload}** noted. How much time will they typically spend using it?\n> _This helps me balance durability, cooling, and performance for the real workload._`,
-        ctx,
-        [
-          'Occasional / weekends',
-          'Daily school or home use',
-          'Long hours / intensive use',
-        ],
-      );
+    if (expertise.level === 'expert' && !brief.gpuPreference) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    if (expertise.level === 'expert' && !brief.targetDisplay) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    if (expertise.level === 'expert' && !brief.budget) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    // Intermediate flow: workload + budget + optional display prefs
+    if (expertise.level === 'intermediate' && !brief.workload) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    if (expertise.level === 'intermediate' && !brief.budget) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    if (expertise.level === 'intermediate' && !brief.targetDisplay) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    // Beginner flow: workload → usageIntensity → budget
+    if (!brief.workload) {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
+    }
+
+    if (!brief.usageIntensity && expertise.level === 'beginner') {
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
     }
 
     if (!brief.budget) {
-      return this.askQuestion(
-        `💰 For a **${brief.usageIntensity}** ${brief.workload} workload, what is your total target budget in INR?\n> _I will use live in-stock components and keep the build within this amount._`,
-        ctx,
-        ['₹60,000', '₹1,00,000', '₹1,50,000', '₹2,50,000', '₹3,00,000'],
-      );
+      return this.askQuestion(nextField.question, ctx, nextField.followUp);
     }
 
-    // ── Build from the goal-first brief; technical defaults stay controllable ─
+    // ── STEP 3: BUILD & PRESENT ────────────────────────────────────────────
     try {
-      const targetDisplay = brief.targetDisplay ?? '1080p144';
+      const targetDisplay =
+        brief.targetDisplay ??
+        (expertise.level === 'expert' ? '1440p144' : '1080p144');
       const result = await buildGamingPc({
-        budget: brief.budget,
-        workload: brief.workload,
+        budget: getBuildBudget(brief),
+        workload: brief.workload ?? 'gaming',
         targetDisplay,
         needsStreaming: brief.needsStreaming ?? false,
         includePeripherals: false,
@@ -655,6 +720,7 @@ export class GamingBuildAdvisorAgent implements Agent {
           brief.cpuPreference === 'auto' ? null : (brief.cpuBrand ?? null),
         gpuBrand:
           brief.gpuPreference === 'auto' ? null : (brief.gpuBrand ?? null),
+        selectionMode: brief.premiumPreference ? 'premium' : 'balanced',
       });
 
       const products = result.components.map((c) => c.product);
@@ -670,10 +736,18 @@ export class GamingBuildAdvisorAgent implements Agent {
         streaming: '📡 Streaming + Gaming',
         workstation: '💼 Workstation',
       };
+
       const cpuLabel = brief.cpuBrand ?? 'best compatible in-stock option';
       const gpuLabel = brief.gpuBrand ?? 'best compatible in-stock option';
+      const expertiseBadge = brief.premiumPreference
+        ? '✨ **Premium Build**'
+        : expertise.level === 'expert'
+          ? '👨‍💻 **Expert Build**'
+          : expertise.level === 'intermediate'
+            ? '⚙️ **Optimized Build**'
+            : '👶 **Guided Build**';
 
-      let reply = `## 🖥️ Your Custom PC Build — ${totalFormatted} (${budgetRemaining})\n`;
+      let reply = `## 🖥️ ${expertiseBadge} — ${totalFormatted} (${budgetRemaining})\n`;
       reply += `> **Use Case:** ${workloadLabels[brief.workload] ?? brief.workload}  |  **CPU:** ${cpuLabel}  |  **GPU:** ${gpuLabel}  |  **Display:** ${targetDisplay}\n\n`;
 
       if (result.partialNote) {
@@ -693,11 +767,25 @@ export class GamingBuildAdvisorAgent implements Agent {
       reply += `\n**⚡ Estimated Power Draw:** ~${result.estimatedPowerDraw}W\n`;
       reply += `\n🏷️ **Coupon Savings:** Code **\`BUILD50K\`** → ₹5,000 OFF  |  **\`GAMING10\`** → 10% OFF`;
 
-      reply += `\n\n🔄 **Want to tweak this build?**\n`;
-      reply += `- **"Swap GPU to Nvidia"** or **"Swap GPU to AMD"**\n`;
-      reply += `- **"Swap CPU to Intel"** or **"Swap CPU to AMD"**\n`;
-      reply += `- **"Show cheaper build"** — tighter budget version\n`;
-      reply += `- **"Upgrade build"** — push performance further\n`;
+      // Adaptive follow-up based on expertise
+      if (expertise.level === 'expert') {
+        reply += `\n\n🔧 **Tweaks & Swaps:**\n`;
+        reply += `- **"Swap GPU to ${brief.gpuBrand === 'Nvidia' ? 'AMD' : 'Nvidia'}"** — change GPU chip\n`;
+        reply += `- **"Swap CPU to ${brief.cpuBrand === 'Intel' ? 'AMD' : 'Intel'}"** — change CPU chip\n`;
+        reply += `- **"Optimize for 4K"** — upgrade GPU for higher resolution\n`;
+        reply += `- **"Balance power/cost"** — reduce budget or TDP\n`;
+      } else if (expertise.level === 'intermediate') {
+        reply += `\n\n🔄 **Want to adjust?**\n`;
+        reply += `- **"Show cheaper build"** — tighter budget\n`;
+        reply += `- **"Upgrade build"** — better performance\n`;
+        reply += `- **"Change to $(brand)"** — different GPU/CPU brand\n`;
+      } else {
+        reply += `\n\n🔄 **Want to tweak this build?**\n`;
+        reply += `- **"Swap GPU to Nvidia"** or **"Swap GPU to AMD"**\n`;
+        reply += `- **"Swap CPU to Intel"** or **"Swap CPU to AMD"**\n`;
+        reply += `- **"Show cheaper build"** — tighter budget version\n`;
+        reply += `- **"Upgrade build"** — push performance further\n`;
+      }
 
       reply += `\n---\n✅ **Ready to add all ${result.components.length} components to your cart?** Type **"Yes, add to cart"** to confirm!`;
 
@@ -712,15 +800,22 @@ export class GamingBuildAdvisorAgent implements Agent {
             : 'Swap GPU to Nvidia',
           brief.cpuBrand === 'Intel' ? 'Swap CPU to AMD' : 'Swap CPU to Intel',
           'Can I save with a coupon?',
-          'Show cheaper build',
+          expertise.level === 'expert'
+            ? 'Optimize for 4K'
+            : 'Show cheaper build',
         ],
         explanation: {
           why: [
-            `Matched to the stated ${brief.workload} workload and ${brief.usageIntensity} usage pattern.`,
+            `[${expertise.level.toUpperCase()}] Matched to the stated ${brief.workload} workload${brief.usageIntensity ? ` and ${brief.usageIntensity} usage pattern` : ''}.`,
             'Selected from compatible, in-stock gaming components within the stated budget.',
           ],
           tradeoffs: [
-            'Technical brand preferences were left automatic because none were requested.',
+            brief.cpuPreference === 'auto'
+              ? 'CPU brand was left automatic to optimize cost.'
+              : `CPU brand was locked to ${brief.cpuBrand} as requested.`,
+            brief.gpuPreference === 'auto'
+              ? 'GPU brand was left automatic to optimize performance.'
+              : `GPU brand was locked to ${brief.gpuBrand} as requested.`,
           ],
           source: 'catalog',
         },
@@ -791,13 +886,14 @@ export class GamingBuildAdvisorAgent implements Agent {
 
     try {
       const result = await buildGamingPc({
-        budget: brief.budget,
+        budget: getBuildBudget(brief),
         workload: brief.workload ?? 'gaming',
         targetDisplay: brief.targetDisplay ?? '1440p144',
         needsStreaming: brief.needsStreaming ?? false,
         includePeripherals: false,
         cpuBrand: brief.cpuBrand ?? null,
         gpuBrand: brief.gpuBrand ?? null,
+        selectionMode: brief.premiumPreference ? 'premium' : 'balanced',
       });
 
       // Add items to cart (for logged-in user or default session)

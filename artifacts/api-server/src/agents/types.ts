@@ -28,6 +28,14 @@ export interface ConversationCheckpoint {
   category?: string | null;
   goal?: string | null;
   recipient?: string | null;
+  persona?:
+    | 'parent'
+    | 'student'
+    | 'gamer'
+    | 'professional'
+    | 'gift_buyer'
+    | string
+    | null;
   usageIntensity?: string | null;
   budgetMin?: number | null;
   budgetMax?: number | null;
@@ -42,6 +50,10 @@ export interface AgentResponse {
   products: any[];
   orders: any[];
   requiresLogin?: boolean;
+  requiresHumanReview?: boolean;
+  manualSearchMode?: boolean;
+  accessibleDescription?: string;
+  isAIGenerated?: boolean;
   followUp?: string[];
   userContext: {
     name?: string;
