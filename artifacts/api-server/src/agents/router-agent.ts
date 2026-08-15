@@ -80,6 +80,7 @@ function localFallbackParse(
 
   // ── Active Guided Consultation continuation (checked FIRST before PC build) ──
   const isGuidedAdvisorActive =
+    lastContentLower.includes('what will you primarily use your new') ||
     lastContentLower.includes('primary use case for your new') ||
     lastContentLower.includes('target budget for your') ||
     lastContentLower.includes('which product category are you looking for') ||
@@ -94,6 +95,7 @@ function localFallbackParse(
     lastContentLower.includes('best recommended tablet') ||
     lastContentLower.includes('what will you primarily use your new tv') ||
     lastContentLower.includes('what will you primarily use your new tablet') ||
+    lastContentLower.includes('what will you primarily use your tablet') ||
     lastContentLower.includes('what is your primary use case for your new');
 
   if (isGuidedAdvisorActive) {
@@ -104,6 +106,11 @@ function localFallbackParse(
   const isGamingBuildActive =
     lastContentLower.includes('gaming pc') ||
     lastContentLower.includes('pc build') ||
+    lastContentLower.includes('what will they primarily do on this pc') ||
+    lastContentLower.includes('how much time will they typically spend') ||
+    lastContentLower.includes('how much time will they') ||
+    (lastContentLower.includes('for a ') &&
+      lastContentLower.includes('workload')) ||
     lastContentLower.includes('primary workload') ||
     lastContentLower.includes('what will you primarily use this pc') ||
     lastContentLower.includes('processor brand preference') ||

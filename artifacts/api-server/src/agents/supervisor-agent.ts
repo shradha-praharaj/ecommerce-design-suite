@@ -72,6 +72,14 @@ export class SupervisorAgent {
         await this.router.classifyIntent(ctx),
       );
 
+      if (
+        (!parsed.intent || parsed.intent === 'unknown') &&
+        (ctx.checkpoint?.activeAgent === 'gaming_build' ||
+          ctx.checkpoint?.activeAgent === 'guided_advisor')
+      ) {
+        parsed.intent = ctx.checkpoint.activeAgent;
+      }
+
       if (needsProductSearchClarification(ctx, parsed)) {
         console.log(
           '[SupervisorAgent] Requesting product category clarification',
@@ -83,6 +91,11 @@ export class SupervisorAgent {
       }
 
       const response = await this.graphRunner.run(ctx, parsed);
+      response.checkpoint = {
+        ...(ctx.checkpoint ?? { version: 1 }),
+        activeAgent: parsed.intent ?? null,
+        personalizationEnabled: ctx.checkpoint?.personalizationEnabled ?? false,
+      };
 
       // If user corrected the AI, prepend self-correction acknowledgment
       if (correctionAnalysis.isCorrection && response.reply) {
@@ -110,6 +123,18 @@ export class SupervisorAgent {
           `• **"Build a gaming PC for 1.5 lakh"**\n` +
           `• **"Show my orders"**`;
         response.followUp = buildContextualFallbackChips(ctx.message);
+      }
+
+      if (response.products?.length && !response.explanation) {
+        response.explanation = {
+          why: [
+            'These items match the request using the product catalog and current availability.',
+          ],
+          tradeoffs: [
+            'You can ask for a different budget, brand, or sorting preference and I will re-rank them.',
+          ],
+          source: 'catalog',
+        };
       }
 
       return this.guardrail.finalize(ctx, response);

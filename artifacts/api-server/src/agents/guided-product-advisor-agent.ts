@@ -19,7 +19,7 @@ interface ConsultationState {
 function detectCategory(text: string): string | null {
   const t = text.toLowerCase();
   if (
-    /mobil|mobile|phone|handset|smartphone|cellular|iphone|galaxy|redmi|realme|oneplus|vivo|oppo/.test(
+    /\b(mobil|mobile|phone|handset|smartphone|cellular|iphone|galaxy|redmi|realme|oneplus|vivo|oppo)\b/.test(
       t,
     )
   ) {
@@ -42,7 +42,9 @@ function detectCategory(text: string): string | null {
     return 'Accessories';
   }
   // TV & Smart Display detection
-  if (/\btv\b|smart tv|television|qled|oled tv|4k tv|led tv|smart display/.test(t)) {
+  if (
+    /\btv\b|smart tv|television|qled|oled tv|4k tv|led tv|smart display/.test(t)
+  ) {
     return 'TV';
   }
   // Tablet detection
@@ -57,23 +59,36 @@ function detectUseCase(text: string, category: string | null): string | null {
   const t = text.toLowerCase();
 
   if (category === 'Mobiles') {
-    if (/photo|camera|vlog|video|snap|shot/.test(t)) return 'Photography & Vlogging';
-    if (/game|gaming|pubg|fps|performance|speed/.test(t)) return 'Gaming & High Performance';
+    if (/photo|camera|vlog|video|snap|shot/.test(t))
+      return 'Photography & Vlogging';
+    if (/game|gaming|pubg|fps|performance|speed/.test(t))
+      return 'Gaming & High Performance';
     if (/battery|mah|long|charging|backup/.test(t)) return 'Long Battery Life';
-    if (/work|office|business|email|call/.test(t)) return 'Business & Office Work';
-    if (/budget|cheap|low price|everyday|basic|daily/.test(t)) return 'Everyday Budget Use';
+    if (/work|office|business|email|call/.test(t))
+      return 'Business & Office Work';
+    if (/budget|cheap|low price|everyday|basic|daily/.test(t))
+      return 'Everyday Budget Use';
   }
 
   if (category === 'Laptops') {
-    if (/code|coding|student|study|college|school|office/.test(t)) return 'Coding & Student Work';
+    if (
+      /code|coding|programming|developer|student|study|college|school|office/.test(
+        t,
+      )
+    )
+      return 'Coding & Student Work';
     if (/game|gaming|graphics|rtx|gpu/.test(t)) return 'High-End Gaming';
-    if (/edit|editing|video|design|render|3d|photoshop/.test(t)) return 'Video Editing & Design';
-    if (/travel|portable|light|business|slim/.test(t)) return 'Business & Travel';
+    if (/edit|editing|video|design|render|3d|photoshop/.test(t))
+      return 'Video Editing & Design';
+    if (/travel|portable|light|business|slim/.test(t))
+      return 'Business & Travel';
   }
 
   if (category === 'Audio') {
-    if (/noise|anc|quiet|silence|cancelling/.test(t)) return 'Active Noise Cancelling';
-    if (/gym|sport|run|workout|fit|sweat/.test(t)) return 'Gym & Sports Wireless';
+    if (/noise|anc|quiet|silence|cancelling/.test(t))
+      return 'Active Noise Cancelling';
+    if (/gym|sport|run|workout|fit|sweat/.test(t))
+      return 'Gym & Sports Wireless';
     if (/game|gaming|latency|spatial/.test(t)) return 'Low-Latency Gaming';
     if (/call|office|mic|meeting|work/.test(t)) return 'Clear Work Calls';
   }
@@ -86,24 +101,31 @@ function detectUseCase(text: string, category: string | null): string | null {
   }
 
   if (category === 'TV') {
-    if (/movie|film|cinema|streaming|netflix|disney/.test(t)) return 'Movies & Streaming';
+    if (/movie|film|cinema|streaming|netflix|disney/.test(t))
+      return 'Movies & Streaming';
     if (/game|gaming|ps5|xbox|console/.test(t)) return 'Gaming Console Setup';
     if (/bedroom|small|compact/.test(t)) return 'Bedroom / Small Room';
-    if (/living room|large|big screen|home theatre/.test(t)) return 'Living Room & Home Theatre';
+    if (/living room|large|big screen|home theatre/.test(t))
+      return 'Living Room & Home Theatre';
   }
 
   if (category === 'Tablets') {
-    if (/student|study|note|learn|school/.test(t)) return 'Students & Note-Taking';
+    if (/student|study|note|learn|school/.test(t))
+      return 'Students & Note-Taking';
     if (/draw|artist|art|sketch|stylus/.test(t)) return 'Digital Art & Drawing';
     if (/travel|portable|light|compact/.test(t)) return 'Travel & Portability';
-    if (/video|stream|media|entertainment|netflix/.test(t)) return 'Media & Entertainment';
+    if (/video|stream|media|entertainment|netflix/.test(t))
+      return 'Media & Entertainment';
   }
 
   return null;
 }
 
 // Helper to extract budget from text
-function extractBudgetRange(text: string): { min: number | null; max: number | null } {
+function extractBudgetRange(text: string): {
+  min: number | null;
+  max: number | null;
+} {
   const t = text.toLowerCase();
 
   const numMatch = t.match(
@@ -117,7 +139,8 @@ function extractBudgetRange(text: string): { min: number | null; max: number | n
     if (!isNaN(val) && val > 0) {
       const suffix = (numMatch[2] ?? '').toLowerCase();
       if (suffix === 'k') val *= 1000;
-      else if (['lakh', 'lakhs', 'lac', 'lacs', 'l'].includes(suffix)) val *= 100000;
+      else if (['lakh', 'lakhs', 'lac', 'lacs', 'l'].includes(suffix))
+        val *= 100000;
       else if (val > 0 && val <= 15) val *= 100000;
       else if (val > 15 && val <= 500 && !raw.includes('.')) val *= 1000;
       amount = Math.round(val);
@@ -125,13 +148,18 @@ function extractBudgetRange(text: string): { min: number | null; max: number | n
   }
 
   if (/under 15|below 15|15k|15,000/.test(t)) return { min: 0, max: 15000 };
-  if (/15.*30|15k.*30k|15,000.*30,000/.test(t)) return { min: 15000, max: 30000 };
-  if (/30.*60|30k.*60k|30,000.*60,000/.test(t)) return { min: 30000, max: 60000 };
-  if (/premium|above 60|60k\+|over 60/.test(t)) return { min: 60000, max: 300000 };
+  if (/15.*30|15k.*30k|15,000.*30,000/.test(t))
+    return { min: 15000, max: 30000 };
+  if (/30.*60|30k.*60k|30,000.*60,000/.test(t))
+    return { min: 30000, max: 60000 };
+  if (/premium|above 60|60k\+|over 60/.test(t))
+    return { min: 60000, max: 300000 };
 
   if (/under 40|below 40|40k|40,000/.test(t)) return { min: 0, max: 40000 };
-  if (/40.*70|40k.*70k|40,000.*70,000/.test(t)) return { min: 40000, max: 70000 };
-  if (/70.*120|70k.*120k|70,000.*1,20,000/.test(t)) return { min: 70000, max: 120000 };
+  if (/40.*70|40k.*70k|40,000.*70,000/.test(t))
+    return { min: 40000, max: 70000 };
+  if (/70.*120|70k.*120k|70,000.*1,20,000/.test(t))
+    return { min: 70000, max: 120000 };
 
   // TV-specific budget ranges
   if (/under 20|below 20|20k|20,000/.test(t)) return { min: 0, max: 20000 };
@@ -197,7 +225,8 @@ function extractConsultationState(
 
   // 2. Detect Use Case — pass category context
   let useCase =
-    detectUseCase(currentMessage, category) || detectUseCase(combined, category);
+    detectUseCase(currentMessage, category) ||
+    detectUseCase(combined, category);
 
   // 3. Extract Budget Range
   let { min: budgetMin, max: budgetMax } = extractBudgetRange(currentMessage);
@@ -263,11 +292,7 @@ function buildNotFoundResponse(
       `Would you like to explore another category or broaden your budget?`,
     products: [],
     orders: [],
-    followUp: [
-      'Show All Mobiles',
-      'Show All Laptops',
-      'Build a Gaming PC',
-    ],
+    followUp: ['Show All Mobiles', 'Show All Laptops', 'Build a Gaming PC'],
     userContext: null,
   };
 }
@@ -388,7 +413,9 @@ export class GuidedProductAdvisorAgent implements Agent {
       }
 
       return {
-        reply: prompt + `\n\nSelect an option below or tell me what features matter most to you!`,
+        reply:
+          prompt +
+          `\n\nSelect an option below or tell me what features matter most to you!`,
         products: [],
         orders: [],
         followUp: chips,
@@ -548,6 +575,17 @@ export class GuidedProductAdvisorAgent implements Agent {
         state.brand ? `Other brands` : `Filter by Samsung`,
         'Can I save with a coupon?',
       ],
+      explanation: {
+        why: [
+          `Matches the requested ${state.category} category and ${state.useCase} goal.`,
+          `Fits the stated budget${state.brand ? ` and ${state.brand} brand preference` : ''}.`,
+          'Selected from products currently marked in stock in the catalog.',
+        ],
+        tradeoffs: [
+          'The ranking uses catalog facts and rating confidence; it does not assume popularity means best fit.',
+        ],
+        source: 'catalog',
+      },
       userContext: null,
     };
   }

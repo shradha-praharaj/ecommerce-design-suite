@@ -19,6 +19,22 @@ export interface AgentContext {
   userId: number | null;
   userContext: UserContext;
   history?: Array<{ role: string; content: string }>;
+  checkpoint?: ConversationCheckpoint;
+}
+
+export interface ConversationCheckpoint {
+  version: number;
+  activeAgent?: string | null;
+  category?: string | null;
+  goal?: string | null;
+  recipient?: string | null;
+  usageIntensity?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  answers?: Record<string, string | number | boolean | null>;
+  nextQuestion?: string | null;
+  personalizationEnabled?: boolean;
+  correctionRevision?: number;
 }
 
 export interface AgentResponse {
@@ -32,6 +48,13 @@ export interface AgentResponse {
     recentOrderCount: number;
     interests?: string[];
   } | null;
+  conversationId?: number;
+  checkpoint?: ConversationCheckpoint;
+  explanation?: {
+    why: string[];
+    tradeoffs?: string[];
+    source: 'catalog' | 'user_preferences' | 'order_history';
+  };
 }
 
 export interface ParsedIntent {

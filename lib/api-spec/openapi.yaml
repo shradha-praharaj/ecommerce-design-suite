@@ -419,6 +419,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/AIChatResponse"
 
+  /ai/conversations:
+    get:
+      operationId: listAIConversations
+      tags: [ai]
+      summary: List the authenticated user's AI conversations
+      responses:
+        "200":
+          description: Owned conversation summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AIConversation"
+        "401":
+          description: Login required
+
+  /ai/conversations/{conversationId}:
+    get:
+      operationId: getAIConversation
+      tags: [ai]
+      summary: Resume an owned AI conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Conversation history and checkpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIConversationMemory"
+        "401":
+          description: Login required
+        "404":
+          description: Conversation not found
+    delete:
+      operationId: deleteAIConversation
+      tags: [ai]
+      summary: Permanently delete an owned AI conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Conversation deleted
+        "401":
+          description: Login required
+        "404":
+          description: Conversation not found
+
   /cart/coupon:
     post:
       operationId: applyCoupon
@@ -811,14 +866,54 @@ components:
             properties:
               role: { type: string }
               content: { type: string }
+        conversationId:
+          type: integer
+        clientMessageId:
+          type: string
+        personalizationEnabled:
+          type: boolean
 
     AIChatResponse:
       type: object
-      required:
-        - response
       properties:
+        reply:
+          type: string
+        conversationId:
+          type: integer
+        checkpoint:
+          type: object
+          additionalProperties: true
         response:
           type: string
+
+    AIConversation:
+      type: object
+      required: [id, userId, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        title: { type: [string, "null"] }
+        personalizationEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AIConversationMemory:
+      type: object
+      required: [conversationId, history, personalizationEnabled]
+      properties:
+        conversationId: { type: integer }
+        history:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string }
+              content: { type: string }
+        checkpoint:
+          type: object
+          additionalProperties: true
+        personalizationEnabled: { type: boolean }
 
     ProductSearchResult:
       type: object

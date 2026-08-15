@@ -20,6 +20,8 @@ import {
   Check,
   Mic,
   MicOff,
+  ShieldCheck,
+  ShieldOff,
 } from 'lucide-react';
 import { useAddToCart, getGetCartQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -67,6 +69,10 @@ interface Message {
   requiresLogin?: boolean;
   followUp?: string[];
   compareData?: CompareData;
+  explanation?: {
+    why: string[];
+    tradeoffs?: string[];
+  };
 }
 
 const QUICK_ACTIONS = [
@@ -85,6 +91,19 @@ const QUICK_ACTIONS = [
 ];
 
 const CHAT_STORAGE_KEY = 'shopnow_ai_chat';
+const CHAT_CONVERSATION_KEY = 'shopnow_ai_conversation_id';
+const PRODUCT_MARKDOWN_LINK =
+  /\[!\[[^\]]*]\([^)]+\)]\([^)]*\/product\/\d+\)\s*\[[\s\S]*?]\([^)]*\/product\/\d+\)\s*/g;
+
+function removeProductMarkdownLinks(content: string): string {
+  return content.replace(PRODUCT_MARKDOWN_LINK, '').trim();
+}
+
+function createClientMessageId(): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function loadPersistedChat(): { messages: Message[]; hasOpened: boolean } {
   try {
@@ -104,7 +123,9 @@ function persistChat(messages: Message[], hasOpened: boolean) {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
   const token = localStorage.getItem('shopnow_auth_token');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -117,7 +138,7 @@ interface AIChatbotProps {
 }
 
 export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
-  const { isLoggedIn, userName } = useUser();
+  const { isLoggedIn, userName, isLoading: isAuthLoading } = useUser();
   const queryClient = useQueryClient();
   const addToCart = useAddToCart();
   const [, setLocation] = useLocation();
@@ -127,9 +148,16 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
   const [messages, setMessages] = useState<Message[]>(
     persisted.current.messages,
   );
+  const [conversationId, setConversationId] = useState<number | null>(() => {
+    const stored = localStorage.getItem(CHAT_CONVERSATION_KEY);
+    const parsed = stored ? Number(stored) : NaN;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  });
+  const [isHydrating, setIsHydrating] = useState(false);
+  const [personalizationEnabled, setPersonalizationEnabled] = useState(false);
   const [input, setInput] = useState('');
   const [hasOpened, setHasOpened] = useState(persisted.current.hasOpened);
-  const [addedProducts, setAddedProducts] = useState<Set<number>>(new Set());
+  const [selectedCartProducts, setSelectedCartProducts] = useState<any[]>([]);
   const [compareProducts, setCompareProducts] = useState<any[]>([]);
   const [showCompare, setShowCompare] = useState(false);
   const [compareLoading, setCompareLoading] = useState(false);
@@ -193,22 +221,97 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
     }
   };
 
-  // Persist chat to sessionStorage on change
+  // Anonymous chat stays in the browser session; authenticated transcripts live on the server.
   useEffect(() => {
-    persistChat(messages, hasOpened);
-  }, [messages, hasOpened]);
+    if (!isLoggedIn) persistChat(messages, hasOpened);
+  }, [messages, hasOpened, isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+
+    const hydrateConversation = async () => {
+      setIsHydrating(true);
+      try {
+        let activeId = conversationId;
+        if (!activeId) {
+          const listResponse = await fetch('/api/ai/conversations', {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+          });
+          if (listResponse.ok) {
+            const conversations = await listResponse.json();
+            activeId = conversations[0]?.id ?? null;
+          }
+        }
+
+        if (!activeId) {
+          if (!cancelled) setMessages([]);
+          return;
+        }
+
+        const response = await fetch(`/api/ai/conversations/${activeId}`, {
+          headers: getAuthHeaders(),
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          localStorage.removeItem(CHAT_CONVERSATION_KEY);
+          if (!cancelled) setConversationId(null);
+          return;
+        }
+        const memory = await response.json();
+        if (!cancelled) {
+          setConversationId(activeId);
+          localStorage.setItem(CHAT_CONVERSATION_KEY, String(activeId));
+          setMessages(
+            (memory.history || []).map(
+              (item: { role: string; content: string }) => ({
+                role: item.role === 'user' ? 'user' : 'ai',
+                text: item.content,
+              }),
+            ),
+          );
+          setHasOpened((memory.history || []).length > 0);
+          setPersonalizationEnabled(memory.personalizationEnabled !== false);
+        }
+      } finally {
+        if (!cancelled) setIsHydrating(false);
+      }
+    };
+
+    void hydrateConversation();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
+  // Anonymous session messages must not remain visible after login.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setMessages([]);
+    setHasOpened(false);
+    setCompareProducts([]);
+    setShowCompare(false);
+    setPendingRecommendContext(null);
+    try {
+      sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {}
+  }, [isLoggedIn]);
 
   // Automatically clear AI chat cache when user logs out
   const prevIsLoggedInRef = useRef(isLoggedIn);
   useEffect(() => {
     if (prevIsLoggedInRef.current && !isLoggedIn) {
       setMessages([]);
+      setConversationId(null);
+      setPersonalizationEnabled(false);
       setHasOpened(false);
       setCompareProducts([]);
       setShowCompare(false);
       setPendingRecommendContext(null);
       try {
         sessionStorage.removeItem(CHAT_STORAGE_KEY);
+        localStorage.removeItem(CHAT_CONVERSATION_KEY);
       } catch {}
     }
     prevIsLoggedInRef.current = isLoggedIn;
@@ -216,7 +319,7 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      // Build history from last 6 messages for context
+      const clientMessageId = createClientMessageId();
       const history = messages.slice(-6).map((m) => ({
         role: m.role === 'ai' ? 'assistant' : 'user',
         content: m.text,
@@ -225,12 +328,25 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
         method: 'POST',
         headers: getAuthHeaders(),
         credentials: 'include',
-        body: JSON.stringify({ message, history }),
+        body: JSON.stringify({
+          message,
+          history,
+          conversationId: isLoggedIn ? conversationId : undefined,
+          clientMessageId: isLoggedIn ? clientMessageId : undefined,
+          personalizationEnabled: isLoggedIn && personalizationEnabled,
+        }),
       });
       if (!res.ok) throw new Error('Failed to chat');
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.conversationId) {
+        setConversationId(data.conversationId);
+        localStorage.setItem(
+          CHAT_CONVERSATION_KEY,
+          String(data.conversationId),
+        );
+      }
       // Invalidate and refetch cart cache immediately so UI header badge, cart drawer & cart page update in real-time
       queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
       queryClient.refetchQueries({ queryKey: getGetCartQueryKey() });
@@ -271,6 +387,7 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
           orders,
           requiresLogin: data.requiresLogin,
           followUp: data.followUp,
+          explanation: data.explanation,
         },
       ]);
     },
@@ -297,17 +414,29 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
 
   // Auto-send a greeting the first time the chatbot opens for a logged-in user
   useEffect(() => {
-    if (isOpen && !hasOpened) {
+    if (
+      isOpen &&
+      isLoggedIn &&
+      !isAuthLoading &&
+      !hasOpened &&
+      !isHydrating &&
+      messages.length === 0
+    ) {
       setHasOpened(true);
-      if (isLoggedIn) {
-        chatMutation.mutate('hi');
-      }
+      chatMutation.mutate('hi');
     }
     // Focus input when opened
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [
+    isOpen,
+    isLoggedIn,
+    isAuthLoading,
+    isHydrating,
+    hasOpened,
+    messages.length,
+  ]);
 
   // Escape key to close
   useEffect(() => {
@@ -474,18 +603,41 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
     chatMutation.mutate(query);
   };
 
-  const handleAddToCart = async (productId: number) => {
-    try {
-      await addToCart.mutateAsync({ data: { productId, quantity: 1 } });
-      queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-      setAddedProducts((prev) => new Set(prev).add(productId));
-      setTimeout(() => {
-        setAddedProducts((prev) => {
-          const next = new Set(prev);
-          next.delete(productId);
-          return next;
+  const clearConversationAfterCart = async () => {
+    if (isLoggedIn && conversationId) {
+      try {
+        await fetch(`/api/ai/conversations/${conversationId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          credentials: 'include',
         });
-      }, 2000);
+      } catch {}
+      localStorage.removeItem(CHAT_CONVERSATION_KEY);
+    } else {
+      sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    }
+    setConversationId(null);
+    setPendingRecommendContext(null);
+    setCompareProducts([]);
+    setShowCompare(false);
+  };
+
+  const handleAddSelectedToCart = async () => {
+    if (selectedCartProducts.length === 0) return;
+    try {
+      await Promise.all(
+        selectedCartProducts.map((product) =>
+          addToCart.mutateAsync({
+            data: { productId: product.id, quantity: 1 },
+          }),
+        ),
+      );
+      queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
+      await clearConversationAfterCart();
+      setSelectedCartProducts([]);
+      setIsOpen(false);
+      setIsExpanded(false);
+      setLocation('/cart');
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -495,12 +647,23 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
   };
 
   const handleClearChat = () => {
+    const oldConversationId = conversationId;
+    if (isLoggedIn && oldConversationId) {
+      void fetch(`/api/ai/conversations/${oldConversationId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      localStorage.removeItem(CHAT_CONVERSATION_KEY);
+      setConversationId(null);
+    }
     setMessages([]);
     setHasOpened(false);
     setCompareProducts([]);
     setShowCompare(false);
     setPendingRecommendContext(null);
-    sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    setSelectedCartProducts([]);
+    if (!isLoggedIn) sessionStorage.removeItem(CHAT_STORAGE_KEY);
   };
 
   const handleOpen = () => setIsOpen((v) => !v);
@@ -512,6 +675,14 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
       if (prev.length >= 3) return prev; // max 3
       return [...prev, product];
     });
+  };
+
+  const handleToggleCartSelection = (product: any) => {
+    setSelectedCartProducts((current) =>
+      current.some((item) => item.id === product.id)
+        ? current.filter((item) => item.id !== product.id)
+        : [...current, product],
+    );
   };
 
   const displayName = userName?.split(' ')[0] || '';
@@ -580,6 +751,30 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {isLoggedIn && (
+                    <button
+                      onClick={() =>
+                        setPersonalizationEnabled((value) => !value)
+                      }
+                      className="hover:bg-white/20 min-h-9 min-w-9 px-2 rounded-md transition-colors flex items-center justify-center"
+                      title={
+                        personalizationEnabled
+                          ? 'Personalization on: using your account context'
+                          : 'Personalization off: using neutral recommendations'
+                      }
+                      aria-label={
+                        personalizationEnabled
+                          ? 'Turn personalization off'
+                          : 'Turn personalization on'
+                      }
+                    >
+                      {personalizationEnabled ? (
+                        <ShieldCheck size={14} />
+                      ) : (
+                        <ShieldOff size={14} />
+                      )}
+                    </button>
+                  )}
                   {compareProducts.length > 0 && (
                     <button
                       onClick={() => setShowCompare((v) => !v)}
@@ -669,386 +864,459 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
 
                 {/* Messages */}
                 <AnimatePresence initial={false}>
-                  {messages.map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-                      initial={{ opacity: 0, y: 10, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 400,
-                        damping: 30,
-                      }}
-                    >
-                      <div
-                        className={`flex items-end gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                  {messages.map((msg, i) => {
+                    const messageContent =
+                      msg.role === 'ai' && msg.products?.length
+                        ? removeProductMarkdownLinks(msg.text)
+                        : msg.text;
+                    const hasMessageBubble =
+                      msg.role === 'user' ||
+                      Boolean(messageContent) ||
+                      Boolean(msg.explanation) ||
+                      Boolean(msg.requiresLogin);
+
+                    return (
+                      <motion.div
+                        key={i}
+                        className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                        initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 400,
+                          damping: 30,
+                        }}
                       >
-                        {msg.role === 'user' && (
-                          <div className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 text-[11px] font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200">
-                            {displayName.slice(0, 1).toUpperCase() || 'Y'}
-                          </div>
-                        )}
-                        {msg.role === 'ai' && (
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0 mb-1">
-                            <Sparkles size={12} className="text-white" />
-                          </div>
-                        )}
-                        <div className="max-w-[90%] sm:max-w-[85%] lg:max-w-[80%] 2xl:max-w-[75%]">
-                          {msg.role === 'user' && (
-                            <div className="mb-1 pr-1 text-right text-[10px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-                              You
-                            </div>
-                          )}
+                        {hasMessageBubble && (
                           <div
-                            className={`px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl text-sm leading-relaxed ${
-                              msg.role === 'user'
-                                ? 'border border-indigo-500/30 bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-sm rounded-br-sm whitespace-pre-wrap'
-                                : 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700 rounded-tl-sm'
-                            }`}
+                            className={`flex items-end gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                           >
-                            {msg.role === 'ai' ? (
-                              <MarkdownMessage
-                                content={msg.text}
-                                onLinkClick={() => {
-                                  setIsOpen(false);
-                                  setIsExpanded(false);
-                                }}
-                              />
-                            ) : (
-                              msg.text
-                            )}
-                            {msg.requiresLogin && (
-                              <Link
-                                href="/login"
-                                onClick={() => setIsOpen(false)}
-                                className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                              >
-                                Log In <ChevronRight size={12} />
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Visual Compare Table */}
-                      {msg.compareData && (
-                        <div className="ml-9 w-[calc(100%-2.25rem)] space-y-3">
-                          {/* Product name headers */}
-                          <div
-                            className={`grid gap-2 ${msg.compareData.products.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
-                          >
-                            {msg.compareData.products.map(
-                              (p: any, pi: number) => (
-                                <div
-                                  key={pi}
-                                  className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-2 text-center"
-                                >
-                                  <img
-                                    src={resolveProductImageSrc(
-                                      p.imageUrl,
-                                      p.name,
-                                    )}
-                                    alt={p.name}
-                                    className="w-10 h-10 object-cover rounded-lg mx-auto mb-1.5"
-                                    onError={(e) =>
-                                      onProductImageError(e, p.name)
-                                    }
-                                  />
-                                  <div className="text-[10px] font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2">
-                                    {p.name}
-                                  </div>
-                                  <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                    ₹
-                                    {Math.round(
-                                      parseFloat(p.price),
-                                    ).toLocaleString()}
-                                  </div>
-                                </div>
-                              ),
-                            )}
-                          </div>
-
-                          {/* Feature rows */}
-                          <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
-                            {msg.compareData.features.map(
-                              (feat: CompareFeature, fi: number) => (
-                                <div
-                                  key={fi}
-                                  className={`${fi > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}`}
-                                >
-                                  <div className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-900 flex items-center gap-1.5">
-                                    <span className="text-sm">{feat.icon}</span>
-                                    <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
-                                      {feat.label}
-                                    </span>
-                                  </div>
-                                  <div
-                                    className={`grid divide-x divide-neutral-100 dark:divide-neutral-700 ${msg.compareData!.products.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
-                                  >
-                                    {feat.values.map(
-                                      (val: string, vi: number) => {
-                                        const isWinner = feat.winner === vi;
-                                        const isTie = feat.winner === -1;
-                                        return (
-                                          <div
-                                            key={vi}
-                                            className={`px-2 py-2 text-center ${isWinner ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
-                                          >
-                                            <div
-                                              className={`text-[11px] font-medium ${isWinner ? 'text-green-700 dark:text-green-400' : 'text-neutral-700 dark:text-neutral-300'}`}
-                                            >
-                                              {val}
-                                            </div>
-                                            {isWinner && (
-                                              <div className="text-[9px] text-green-600 dark:text-green-400 font-semibold mt-0.5">
-                                                ✓ Best
-                                              </div>
-                                            )}
-                                            {isTie && vi === 0 && (
-                                              <div className="text-[9px] text-neutral-400 mt-0.5">
-                                                — tie
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      },
-                                    )}
-                                  </div>
-                                </div>
-                              ),
-                            )}
-                          </div>
-
-                          {/* Follow-up questions */}
-                          {msg.compareData.followUpQuestions.length > 0 &&
-                            !msg.compareData.recommendation &&
-                            !pendingRecommendContext && (
-                              <div className="space-y-1.5">
-                                <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 px-1">
-                                  🤔 Help me find the best one for you — tap a
-                                  question:
-                                </p>
-                                {msg.compareData.followUpQuestions.map(
-                                  (q: string, qi: number) => (
-                                    <button
-                                      key={qi}
-                                      onClick={() => {
-                                        // Post the question as an AI message, then await user's typed answer
-                                        setMessages((prev) => [
-                                          ...prev,
-                                          { role: 'ai', text: q },
-                                        ]);
-                                        setPendingRecommendContext(
-                                          msg.compareData!,
-                                        );
-                                        setTimeout(
-                                          () => inputRef.current?.focus(),
-                                          80,
-                                        );
-                                      }}
-                                      disabled={compareLoading}
-                                      className="w-full text-left px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 text-[11px] border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                      <span className="text-indigo-400">→</span>
-                                      {q}
-                                    </button>
-                                  ),
-                                )}
+                            {msg.role === 'user' && (
+                              <div className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 text-[11px] font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200">
+                                {displayName.slice(0, 1).toUpperCase() || 'Y'}
                               </div>
                             )}
-
-                          {/* Pending recommendation prompt */}
-                          {pendingRecommendContext === msg.compareData && (
-                            <div className="flex items-center gap-2 px-1">
-                              <span className="text-[10px] text-indigo-500 dark:text-indigo-400 animate-pulse">
-                                ✏️ Type your answer below…
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Product Suggestions */}
-                      {/* Order Cards */}
-                      {msg.orders && msg.orders.length > 0 && (
-                        <div className="ml-9 w-[calc(100%-2.25rem)] space-y-2">
-                          {msg.orders.map((order) => {
-                            const status = order.status.toLowerCase();
-                            const statusColor =
-                              status === 'delivered' || status === 'completed'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                : status === 'shipped'
-                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
-                            return (
-                              <Link
-                                key={order.id}
-                                href="/orders"
-                                onClick={() => setIsOpen(false)}
-                                className="block bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
-                              >
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
-                                    Order #{order.id}
-                                  </span>
-                                  <span
-                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusColor}`}
-                                  >
-                                    {order.status}
-                                  </span>
+                            {msg.role === 'ai' && (
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shrink-0 mb-1">
+                                <Sparkles size={12} className="text-white" />
+                              </div>
+                            )}
+                            <div className="max-w-[90%] sm:max-w-[85%] lg:max-w-[80%] 2xl:max-w-[75%]">
+                              {msg.role === 'user' && (
+                                <div className="mb-1 pr-1 text-right text-[10px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+                                  You
                                 </div>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mb-1.5">
-                                  {order.products.join(', ')}
-                                </p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
-                                    <Clock size={10} />
-                                    {new Date(
-                                      order.createdAt,
-                                    ).toLocaleDateString('en-IN', {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      year: 'numeric',
-                                    })}
-                                  </div>
-                                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5">
-                                    <IndianRupee size={10} />
-                                    {parseInt(order.totalAmount).toLocaleString(
-                                      'en-IN',
-                                    )}
-                                  </span>
-                                </div>
-                              </Link>
-                            );
-                          })}
-                          <Link
-                            href="/orders"
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 py-2 transition-colors"
-                          >
-                            View All Orders <ChevronRight size={12} />
-                          </Link>
-                        </div>
-                      )}
-
-                      {msg.products && msg.products.length > 0 && (
-                        <div className="ml-9 w-[calc(100%-2.25rem)] space-y-2">
-                          {msg.products.map((p: any) => {
-                            const isInCompare = compareProducts.some(
-                              (cp) => cp.id === p.id,
-                            );
-                            const canAdd = compareProducts.length < 3;
-                            return (
+                              )}
                               <div
-                                key={p.id}
-                                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 p-2.5 rounded-xl flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
+                                className={`px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl text-sm leading-relaxed ${
+                                  msg.role === 'user'
+                                    ? 'border border-indigo-500/30 bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-sm rounded-br-sm whitespace-pre-wrap'
+                                    : 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700 rounded-tl-sm'
+                                }`}
                               >
-                                {/* Compare checkbox */}
-                                <button
-                                  onClick={() => handleToggleCompare(p)}
-                                  disabled={!isInCompare && !canAdd}
-                                  className={`shrink-0 w-9 h-9 rounded border-2 flex items-center justify-center transition-colors ${
-                                    isInCompare
-                                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                                      : canAdd
-                                        ? 'border-neutral-300 dark:border-neutral-600 hover:border-indigo-400'
-                                        : 'border-neutral-200 dark:border-neutral-700 opacity-40 cursor-not-allowed'
-                                  }`}
-                                  title={
-                                    isInCompare
-                                      ? 'Remove from compare'
-                                      : canAdd
-                                        ? 'Add to compare (max 3)'
-                                        : 'Max 3 products'
-                                  }
-                                >
-                                  {isInCompare && <Check size={12} />}
-                                </button>
-                                <Link
-                                  href={`/product/${p.id}`}
-                                  onClick={() => setIsOpen(false)}
-                                  className="w-12 h-12 bg-neutral-100 dark:bg-neutral-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-indigo-400 transition-all"
-                                >
-                                  <img
-                                    src={resolveProductImageSrc(
-                                      p.imageUrl,
-                                      p.name,
-                                    )}
-                                    alt={p.name}
-                                    className="w-11 h-11 object-cover rounded-lg"
-                                    onError={(e) =>
-                                      onProductImageError(e, p.name)
-                                    }
+                                {msg.role === 'ai' ? (
+                                  <MarkdownMessage
+                                    content={messageContent}
+                                    onLinkClick={() => {
+                                      setIsOpen(false);
+                                      setIsExpanded(false);
+                                    }}
                                   />
-                                </Link>
-                                <Link
-                                  href={`/product/${p.id}`}
-                                  onClick={() => setIsOpen(false)}
-                                  className="flex-1 min-w-0 cursor-pointer"
-                                >
-                                  <div className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                    {p.name}
+                                ) : (
+                                  messageContent
+                                )}
+                                {msg.role === 'ai' && msg.explanation && (
+                                  <div className="mt-3 border-t border-neutral-200 pt-2 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
+                                    <div className="font-semibold">
+                                      Why this was shown
+                                    </div>
+                                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                                      {msg.explanation.why.map(
+                                        (reason, reasonIndex) => (
+                                          <li key={reasonIndex}>{reason}</li>
+                                        ),
+                                      )}
+                                    </ul>
+                                    {msg.explanation.tradeoffs &&
+                                      msg.explanation.tradeoffs.length > 0 && (
+                                        <div className="mt-1">
+                                          Trade-off:{' '}
+                                          {msg.explanation.tradeoffs.join(' ')}
+                                        </div>
+                                      )}
                                   </div>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                )}
+                                {msg.requiresLogin && (
+                                  <Link
+                                    href="/login"
+                                    onClick={() => setIsOpen(false)}
+                                    className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Log In <ChevronRight size={12} />
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Visual Compare Table */}
+                        {msg.compareData && (
+                          <div className="ml-9 w-[calc(100%-2.25rem)] space-y-3">
+                            {/* Product name headers */}
+                            <div
+                              className={`grid gap-2 ${msg.compareData.products.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+                            >
+                              {msg.compareData.products.map(
+                                (p: any, pi: number) => (
+                                  <div
+                                    key={pi}
+                                    className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-2 text-center"
+                                  >
+                                    <img
+                                      src={resolveProductImageSrc(
+                                        p.imageUrl,
+                                        p.name,
+                                      )}
+                                      alt={p.name}
+                                      className="w-10 h-10 object-cover rounded-lg mx-auto mb-1.5"
+                                      onError={(e) =>
+                                        onProductImageError(e, p.name)
+                                      }
+                                    />
+                                    <div className="text-[10px] font-semibold text-neutral-800 dark:text-neutral-200 line-clamp-2">
+                                      {p.name}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
                                       ₹
                                       {Math.round(
                                         parseFloat(p.price),
                                       ).toLocaleString()}
-                                    </span>
-                                    {p.discountPct > 0 && (
-                                      <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
-                                        {p.discountPct}% off
-                                      </span>
-                                    )}
+                                    </div>
                                   </div>
-                                </Link>
-                                <button
-                                  onClick={() => handleAddToCart(p.id)}
-                                  disabled={addedProducts.has(p.id)}
-                                  className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-                                    addedProducts.has(p.id)
-                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                      : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/30'
-                                  }`}
-                                  title={
-                                    addedProducts.has(p.id)
-                                      ? 'Added!'
-                                      : 'Add to Cart'
-                                  }
-                                >
-                                  {addedProducts.has(p.id) ? (
-                                    <Star size={14} className="fill-current" />
-                                  ) : (
-                                    <ShoppingCart size={14} />
-                                  )}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                                ),
+                              )}
+                            </div>
 
-                      {/* Follow-up suggestion chips */}
-                      {msg.followUp &&
-                        msg.followUp.length > 0 &&
-                        i === messages.length - 1 && (
-                          <div className="ml-9 flex flex-wrap gap-1.5 mt-1">
-                            {msg.followUp.map((suggestion, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => handleQuickAction(suggestion)}
-                                disabled={chatMutation.isPending}
-                                className="px-2.5 py-2 min-h-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 disabled:opacity-50"
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
+                            {/* Feature rows */}
+                            <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+                              {msg.compareData.features.map(
+                                (feat: CompareFeature, fi: number) => (
+                                  <div
+                                    key={fi}
+                                    className={`${fi > 0 ? 'border-t border-neutral-100 dark:border-neutral-700' : ''}`}
+                                  >
+                                    <div className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-900 flex items-center gap-1.5">
+                                      <span className="text-sm">
+                                        {feat.icon}
+                                      </span>
+                                      <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                                        {feat.label}
+                                      </span>
+                                    </div>
+                                    <div
+                                      className={`grid divide-x divide-neutral-100 dark:divide-neutral-700 ${msg.compareData!.products.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+                                    >
+                                      {feat.values.map(
+                                        (val: string, vi: number) => {
+                                          const isWinner = feat.winner === vi;
+                                          const isTie = feat.winner === -1;
+                                          return (
+                                            <div
+                                              key={vi}
+                                              className={`px-2 py-2 text-center ${isWinner ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
+                                            >
+                                              <div
+                                                className={`text-[11px] font-medium ${isWinner ? 'text-green-700 dark:text-green-400' : 'text-neutral-700 dark:text-neutral-300'}`}
+                                              >
+                                                {val}
+                                              </div>
+                                              {isWinner && (
+                                                <div className="text-[9px] text-green-600 dark:text-green-400 font-semibold mt-0.5">
+                                                  ✓ Best
+                                                </div>
+                                              )}
+                                              {isTie && vi === 0 && (
+                                                <div className="text-[9px] text-neutral-400 mt-0.5">
+                                                  — tie
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        },
+                                      )}
+                                    </div>
+                                  </div>
+                                ),
+                              )}
+                            </div>
+
+                            {/* Follow-up questions */}
+                            {msg.compareData.followUpQuestions.length > 0 &&
+                              !msg.compareData.recommendation &&
+                              !pendingRecommendContext && (
+                                <div className="space-y-1.5">
+                                  <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 px-1">
+                                    🤔 Help me find the best one for you — tap a
+                                    question:
+                                  </p>
+                                  {msg.compareData.followUpQuestions.map(
+                                    (q: string, qi: number) => (
+                                      <button
+                                        key={qi}
+                                        onClick={() => {
+                                          // Post the question as an AI message, then await user's typed answer
+                                          setMessages((prev) => [
+                                            ...prev,
+                                            { role: 'ai', text: q },
+                                          ]);
+                                          setPendingRecommendContext(
+                                            msg.compareData!,
+                                          );
+                                          setTimeout(
+                                            () => inputRef.current?.focus(),
+                                            80,
+                                          );
+                                        }}
+                                        disabled={compareLoading}
+                                        className="w-full text-left px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 text-[11px] border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                      >
+                                        <span className="text-indigo-400">
+                                          →
+                                        </span>
+                                        {q}
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+
+                            {/* Pending recommendation prompt */}
+                            {pendingRecommendContext === msg.compareData && (
+                              <div className="flex items-center gap-2 px-1">
+                                <span className="text-[10px] text-indigo-500 dark:text-indigo-400 animate-pulse">
+                                  ✏️ Type your answer below…
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
-                    </motion.div>
-                  ))}
+
+                        {/* Product Suggestions */}
+                        {/* Order Cards */}
+                        {msg.orders && msg.orders.length > 0 && (
+                          <div className="ml-9 w-[calc(100%-2.25rem)] space-y-2">
+                            {msg.orders.map((order) => {
+                              const status = order.status.toLowerCase();
+                              const statusColor =
+                                status === 'delivered' || status === 'completed'
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                  : status === 'shipped'
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+                              return (
+                                <Link
+                                  key={order.id}
+                                  href="/orders"
+                                  onClick={() => setIsOpen(false)}
+                                  className="block bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 p-3 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                                      Order #{order.id}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusColor}`}
+                                    >
+                                      {order.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mb-1.5">
+                                    {order.products.join(', ')}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
+                                      <Clock size={10} />
+                                      {new Date(
+                                        order.createdAt,
+                                      ).toLocaleDateString('en-IN', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      })}
+                                    </div>
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5">
+                                      <IndianRupee size={10} />
+                                      {parseInt(
+                                        order.totalAmount,
+                                      ).toLocaleString('en-IN')}
+                                    </span>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                            <Link
+                              href="/orders"
+                              onClick={() => setIsOpen(false)}
+                              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 py-2 transition-colors"
+                            >
+                              View All Orders <ChevronRight size={12} />
+                            </Link>
+                          </div>
+                        )}
+
+                        {msg.products && msg.products.length > 0 && (
+                          <div className="ml-9 w-[calc(100%-2.25rem)] space-y-2">
+                            {msg.products.map((p: any) => {
+                              const isInCompare = compareProducts.some(
+                                (cp) => cp.id === p.id,
+                              );
+                              const canAdd = compareProducts.length < 3;
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 p-2 rounded-lg flex items-center gap-2 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+                                >
+                                  {/* Compare checkbox */}
+                                  <button
+                                    onClick={() => handleToggleCompare(p)}
+                                    disabled={!isInCompare && !canAdd}
+                                    className={`shrink-0 w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${
+                                      isInCompare
+                                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                                        : canAdd
+                                          ? 'border-neutral-300 dark:border-neutral-600 hover:border-indigo-400'
+                                          : 'border-neutral-200 dark:border-neutral-700 opacity-40 cursor-not-allowed'
+                                    }`}
+                                    title={
+                                      isInCompare
+                                        ? 'Remove from compare'
+                                        : canAdd
+                                          ? 'Add to compare (max 3)'
+                                          : 'Max 3 products'
+                                    }
+                                  >
+                                    {isInCompare && <Check size={12} />}
+                                  </button>
+                                  <Link
+                                    href={`/product/${p.id}`}
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-10 h-10 bg-neutral-100 dark:bg-neutral-900 rounded-md flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-indigo-400 transition-all"
+                                  >
+                                    <img
+                                      src={resolveProductImageSrc(
+                                        p.imageUrl,
+                                        p.name,
+                                      )}
+                                      alt={p.name}
+                                      className="w-10 h-10 object-cover rounded-md"
+                                      onError={(e) =>
+                                        onProductImageError(e, p.name)
+                                      }
+                                    />
+                                  </Link>
+                                  <Link
+                                    href={`/product/${p.id}`}
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex-1 min-w-0 cursor-pointer"
+                                  >
+                                    <div className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                      {p.name}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                        ₹
+                                        {Math.round(
+                                          parseFloat(p.price),
+                                        ).toLocaleString()}
+                                      </span>
+                                      {p.discountPct > 0 && (
+                                        <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
+                                          {p.discountPct}% off
+                                        </span>
+                                      )}
+                                    </div>
+                                  </Link>
+                                  <button
+                                    onClick={() => handleToggleCartSelection(p)}
+                                    disabled={addToCart.isPending}
+                                    className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-md transition-colors ${
+                                      selectedCartProducts.some(
+                                        (item) => item.id === p.id,
+                                      )
+                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                        : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/30'
+                                    }`}
+                                    title={
+                                      selectedCartProducts.some(
+                                        (item) => item.id === p.id,
+                                      )
+                                        ? 'Selected for cart'
+                                        : 'Add to Cart'
+                                    }
+                                  >
+                                    {selectedCartProducts.some(
+                                      (item) => item.id === p.id,
+                                    ) ? (
+                                      <Check size={14} />
+                                    ) : (
+                                      <ShoppingCart size={14} />
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {selectedCartProducts.length > 0 &&
+                          i === messages.length - 1 && (
+                            <div className="ml-9 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-900/20">
+                              <span className="min-w-0 flex-1 text-[11px] text-emerald-800 dark:text-emerald-200">
+                                {selectedCartProducts.length} item
+                                {selectedCartProducts.length === 1
+                                  ? ''
+                                  : 's'}{' '}
+                                selected. Add them and clear this search?
+                              </span>
+                              <button
+                                onClick={handleAddSelectedToCart}
+                                disabled={addToCart.isPending}
+                                className="min-h-8 rounded-md bg-emerald-600 px-2.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {addToCart.isPending
+                                  ? 'Adding…'
+                                  : 'Add selected & view cart'}
+                              </button>
+                              <button
+                                onClick={() => setSelectedCartProducts([])}
+                                className="min-h-8 px-1.5 text-[11px] font-medium text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          )}
+
+                        {/* Follow-up suggestion chips */}
+                        {msg.followUp &&
+                          msg.followUp.length > 0 &&
+                          i === messages.length - 1 && (
+                            <div className="ml-9 flex flex-wrap gap-1.5 mt-1">
+                              {msg.followUp.map((suggestion, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleQuickAction(suggestion)}
+                                  disabled={chatMutation.isPending}
+                                  className="px-2.5 py-2 min-h-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 disabled:opacity-50"
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
 
                 {/* Thinking indicator */}

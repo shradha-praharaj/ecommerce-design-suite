@@ -123,9 +123,12 @@ export function createProductSearchClarification(
   ctx: AgentContext,
   parsed: ParsedIntent,
 ): AgentResponse {
-  const budget = parsed.maxPrice
-    ? `within ₹${parsed.maxPrice.toLocaleString('en-IN')}`
-    : `above ₹${parsed.minPrice?.toLocaleString('en-IN')}`;
+  const budget =
+    parsed.maxPrice != null
+      ? `within ₹${parsed.maxPrice.toLocaleString('en-IN')}`
+      : parsed.minPrice != null
+        ? `above ₹${parsed.minPrice.toLocaleString('en-IN')}`
+        : 'within your budget';
 
   if (parsed.category) {
     const categoryLabel = parsed.category.toLowerCase();

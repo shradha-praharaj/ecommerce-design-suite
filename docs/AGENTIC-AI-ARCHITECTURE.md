@@ -2,7 +2,7 @@
 
 ## Overview
 
-ShopNow implements a **supervisor-driven, graph-style multi-agent conversational AI** system that provides personalized, multi-turn shopping assistance. The system features an **Adaptive Self-Correction & Error Recovery Engine**, a **Multi-Turn Guided Product Advisor Engine** for all electronics categories, a pluggable model-provider layer for intent classification, a supervisor for orchestration and fault-tolerant fallbacks, and a deterministic PC Builder engine supporting complete 8-component gaming rigs.
+ShopNow implements a **supervisor-driven, graph-style multi-agent conversational AI** system that provides responsible, multi-turn shopping assistance. The system features an **authenticated conversation memory and checkpoint agent**, **Adaptive Self-Correction & Error Recovery**, a **Multi-Turn Guided Product Advisor Engine** for electronics categories, a pluggable model-provider layer for intent classification, a supervisor for orchestration and fault-tolerant fallbacks, and a deterministic PC Builder engine supporting compatible gaming rigs.
 
 ---
 
@@ -11,8 +11,9 @@ ShopNow implements a **supervisor-driven, graph-style multi-agent conversational
 ```mermaid
 flowchart TD
     User([👤 User Message]) --> Frontend[🖥️ AIChatbot Component]
-    Frontend -->|POST /api/ai/chat<br/>message + history| API[📡 API Route Handler]
-    API --> LoadCtx[Load User Context<br/>Orders, Brands, Interests]
+    Frontend -->|POST /api/ai/chat<br/>message + conversationId + clientMessageId| API[📡 API Route Handler]
+    API --> Memory[🧠 ConversationMemoryAgent<br/>Transcript + Checkpoint Hydration]
+    Memory --> LoadCtx[Load User Context<br/>Only when personalization is enabled]
     LoadCtx --> Supervisor[🧠 SupervisorAgent]
     
     Supervisor --> SelfCorrection{Self-Correction Engine<br/>detectCorrection}
@@ -61,6 +62,8 @@ flowchart TD
     Response --> Frontend
     Frontend --> Chips[💬 Follow-up Chips<br/>Contextual Suggestions]
     Chips -->|User clicks chip| User
+    Response --> Persist[🗄️ Persist authenticated turn<br/>Message + versioned checkpoint]
+    Persist --> Memory
 ```
 
 ---
@@ -76,7 +79,8 @@ sequenceDiagram
     participant DB as 🗄️ Database / PostgreSQL
 
     U->>FE: "Help me to pick up best mobil"
-    FE->>SA: {message: "Help me to pick up best mobil", history: []}
+    FE->>SA: {message: "Help me to pick up best mobil", conversationId, clientMessageId}
+    SA->>DB: Load owned transcript + latest checkpoint
     SA->>GPA: Classify → guided_advisor (Phase 1)
     GPA-->>FE: {reply: "📱 What is your primary use case for your new Mobile?", followUp: ["📷 Photography & Vlogging", "🎮 Gaming & High Performance", "🔋 Long Battery Life"]}
     FE-->>U: Shows Phase 1 Use-Case Prompt + Chips
@@ -93,6 +97,7 @@ sequenceDiagram
     GPA->>DB: Fetch top rated phones
     GPA-->>FE: {reply: "## 🌟 #1 Recommended Choice: Galaxy S21 (Variant) — ₹57,822", products[3], followUp: ["Yes, add best match to cart", "Show cheaper option", "Can I save with a coupon?"]}
     FE-->>U: Renders #1 Best Match + Rationale + Top Alternatives + Action Chips
+    FE->>DB: Save assistant turn + checkpoint
 ```
 
 ---
@@ -106,6 +111,7 @@ artifacts/api-server/src/agents/
 ├── index.ts                       # Barrel exports
 ├── types.ts                       # Shared interfaces
 ├── supervisor-agent.ts            # 🧠 Orchestrates agent workflow + fault-tolerant recovery
+├── conversation-memory-agent.ts   # 🧠 Authenticated transcript and checkpoint persistence
 ├── self-correction-engine.ts      # 💡 Detects user corrections & generates empathetic self-correcting prefixes
 ├── router-agent.ts                # Intent classification + active conversation persistence
 ├── guided-product-advisor-agent.ts# 📱 3-Phase Multi-Turn Guided Advisor for Mobiles, Laptops, Audio, Cameras
@@ -124,6 +130,12 @@ artifacts/api-server/src/agents/
 ├── add-to-cart-agent.ts           # 🛒 Single + bulk add via conversation
 └── unknown-agent.ts               # ❓ Fallback + suggestions
 ```
+
+Conversation persistence is defined in `lib/db/src/schema/conversations.ts`:
+
+- `chat_conversations` stores the authenticated owner and personalization setting.
+- `chat_messages` stores ordered user/assistant turns and retry IDs.
+- `chat_checkpoints` stores versioned advisor state for guided-flow recovery.
 
 ---
 
@@ -197,3 +209,26 @@ artifacts/api-server/src/agents/
 - **Provider fallback**: Works seamlessly without an API key using the local regex/keyword parser
 - **No PII in logs**: Only intent name + agent name logged
 - **Non-electronics guardrail**: Gracefully blocks out-of-domain requests
+
+## Current Memory and Responsible AI Additions
+
+The current implementation extends the original graph with authenticated conversation memory:
+
+1. `POST /api/ai/chat` accepts `conversationId`, `clientMessageId`, and an explicit personalization choice.
+2. `ConversationMemoryAgent` restores the owned transcript and latest checkpoint before supervision.
+3. Successful turns persist ordered messages and a versioned checkpoint.
+4. Duplicate client message IDs replay the stored response safely.
+5. `GET` and `DELETE /api/ai/conversations/:conversationId` provide owned resume and deletion controls.
+6. Anonymous chats remain browser-session-only and never load order-history context.
+
+The Responsible AI layer now requires catalog-grounded, in-stock recommendations with visible reasons. Search explanations identify category, budget, and availability filters. Popularity results disclose their review/rating basis and distinguish popularity from personal fit. JWT validation rejects bare IDs and invalid signatures, while authenticated chat requires a client message ID for retry safety.
+
+### Updated PC Advisor Flow
+
+The PC advisor is goal-first for natural shopping requests such as “build a PC for my son”: recipient task, usage intensity, budget, then optional technical refinement. CPU and GPU choices are automatically selected from compatible in-stock inventory unless the shopper explicitly requests a brand or component preference.
+
+### Confirmed Cart Handoff
+
+Suggested product rows require confirmation before mutation. **Add & view cart** adds the product, clears the authenticated conversation or anonymous session memory, and redirects the shopper to `/cart`. Cancelling leaves the search and checkpoint intact.
+
+For the detailed implementation and QA checklist, see [AI-CHATBOT-MEMORY-GUARDRAILS.md](AI-CHATBOT-MEMORY-GUARDRAILS.md).

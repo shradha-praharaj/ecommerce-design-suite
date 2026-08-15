@@ -201,6 +201,7 @@ function isConfirmation(text: string): boolean {
 interface PartialBrief {
   budget?: number;
   workload?: BuildBrief['workload'];
+  usageIntensity?: 'occasional' | 'daily' | 'heavy';
   // 'auto' = user said "decide for me"; undefined = not answered yet
   cpuPreference?: 'AMD' | 'Intel' | 'auto';
   gpuPreference?: 'AMD' | 'Nvidia' | 'auto';
@@ -264,7 +265,10 @@ function extractBriefFromHistory(
       lowerMsg.includes('lower budget') ||
       lowerMsg.includes('less expensive')
     ) {
-      brief.budget = Math.max(40000, Math.round((brief.budget * 0.8) / 5000) * 5000);
+      brief.budget = Math.max(
+        40000,
+        Math.round((brief.budget * 0.8) / 5000) * 5000,
+      );
     } else if (
       lowerMsg.includes('upgrade build') ||
       lowerMsg.includes('higher budget') ||
@@ -312,16 +316,24 @@ function extractBriefFromHistory(
   }
 
   // Also check the current message if it was answering the most recent assistant question
-  const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant');
+  const lastAssistant = [...history]
+    .reverse()
+    .find((m) => m.role === 'assistant');
   const lastAsstQ = (lastAssistant?.content || '').toLowerCase();
-  if (brief.cpuPreference === undefined && lastAsstQ.includes('processor brand')) {
+  if (
+    brief.cpuPreference === undefined &&
+    lastAsstQ.includes('processor brand')
+  ) {
     const pref = extractCpuPreference(currentMessage);
     if (pref !== null) {
       brief.cpuPreference = pref;
       if (pref !== 'auto') brief.cpuBrand = pref;
     }
   }
-  if (brief.gpuPreference === undefined && (lastAsstQ.includes('graphics card') || lastAsstQ.includes('gpu brand'))) {
+  if (
+    brief.gpuPreference === undefined &&
+    (lastAsstQ.includes('graphics card') || lastAsstQ.includes('gpu brand'))
+  ) {
     const pref = extractGpuPreference(currentMessage);
     if (pref !== null) {
       brief.gpuPreference = pref;
@@ -338,6 +350,18 @@ function extractBriefFromHistory(
     }
   }
 
+  // Understand the recipient's time commitment before asking about components.
+  const allUserText = allUserMessages.join(' ').toLowerCase();
+  if (/occasion|weekend|sometimes|few hours/.test(allUserText)) {
+    brief.usageIntensity = 'occasional';
+  } else if (/every day|daily|school days|regularly/.test(allUserText)) {
+    brief.usageIntensity = 'daily';
+  } else if (
+    /all day|long hours|heavy use|intensive|many hours/.test(allUserText)
+  ) {
+    brief.usageIntensity = 'heavy';
+  }
+
   // Extract display target from user messages (only if display/resolution was asked or explicit resolution specified)
   for (let i = allUserMessages.length - 1; i >= 0; i--) {
     const msg = allUserMessages[i];
@@ -345,8 +369,13 @@ function extractBriefFromHistory(
       .reverse()
       .find((m) => m.role === 'assistant');
     const assistantQ = (precedingAssistant?.content || '').toLowerCase();
-    const isDisplayQuestion = assistantQ.includes('target display') || assistantQ.includes('resolution') || assistantQ.includes('monitor');
-    const isExplicitRes = /1080|1440|4k|2k|2160|fhd|wqhd|multi.?monitor/i.test(msg);
+    const isDisplayQuestion =
+      assistantQ.includes('target display') ||
+      assistantQ.includes('resolution') ||
+      assistantQ.includes('monitor');
+    const isExplicitRes = /1080|1440|4k|2k|2160|fhd|wqhd|multi.?monitor/i.test(
+      msg,
+    );
 
     if (isDisplayQuestion || isExplicitRes) {
       const d = extractDisplay(msg);
@@ -356,7 +385,6 @@ function extractBriefFromHistory(
       }
     }
   }
-
 
   // Handle explicit swap GPU command if no brand specified
   if (
@@ -545,8 +573,12 @@ export class GamingBuildAdvisorAgent implements Agent {
           orders: [],
           followUp: [
             'Yes, add to cart',
-            brief.gpuBrand === 'Nvidia' ? 'Swap GPU to AMD' : 'Swap GPU to Nvidia',
-            brief.cpuBrand === 'Intel' ? 'Swap CPU to AMD' : 'Swap CPU to Intel',
+            brief.gpuBrand === 'Nvidia'
+              ? 'Swap GPU to AMD'
+              : 'Swap GPU to Nvidia',
+            brief.cpuBrand === 'Intel'
+              ? 'Swap CPU to AMD'
+              : 'Swap CPU to Intel',
             'Show cheaper build',
           ],
           userContext: ctx.userContext
@@ -576,20 +608,10 @@ export class GamingBuildAdvisorAgent implements Agent {
       return this.confirmAndAddToCart(ctx, history);
     }
 
-    // ── Ask for missing required fields one at a time ──────────────────────
-    if (!brief.budget) {
-      const name = ctx.userContext?.name ? `, ${ctx.userContext.name}` : '';
-      return this.askQuestion(
-        `🖥️ **Let's build your perfect custom PC${name}!**\n\nFirst — what's your **total target budget** in INR?\n> _Think of it as your all-in budget — components only, no peripherals._`,
-        ctx,
-        ['₹60,000', '₹1,00,000', '₹1,50,000', '₹2,50,000', '₹3,00,000'],
-      );
-    }
-
+    // ── Ask outcome-focused questions before technical choices ──────────────
     if (!brief.workload) {
-      const formattedBudget = `₹${brief.budget.toLocaleString('en-IN')}`;
       return this.askQuestion(
-        `✅ Great! **${formattedBudget}** noted.\n\n🎯 **What will you primarily use this PC for?**\n> _This helps me balance CPU vs GPU allocation — gaming needs GPU-heavy, creators need CPU-heavy._`,
+        `🖥️ **Let's build the right PC for the person who will use it!**\n\n🎯 **What will they primarily do on this PC?**\n> _For example: games, schoolwork, video editing, streaming, or a mix._`,
         ctx,
         [
           '🎮 Pure Gaming & Esports',
@@ -600,75 +622,39 @@ export class GamingBuildAdvisorAgent implements Agent {
       );
     }
 
-    if (brief.cpuPreference === undefined) {
-      const workloadHints: Record<string, string> = {
-        gaming: 'For gaming, **AMD Ryzen 7800X3D** dominates frame rates. **Intel Core i7/i9** is also excellent.',
-        creator: 'For video editing & 3D, **AMD Ryzen 9** (more cores) is great. **Intel Core i9** has strong single-thread.',
-        workstation: 'For CAD & simulation, **Intel Core i9/Xeon** leads. **AMD Threadripper** is premium tier.',
-        streaming: 'For streaming + gaming, **AMD Ryzen 7** handles both brilliantly. **Intel Core i7** is equally capable.',
-      };
-      const hint = workloadHints[brief.workload] ?? 'Both AMD and Intel are excellent — pick based on brand preference.';
+    if (!brief.usageIntensity) {
       return this.askQuestion(
-        `👍 **${brief.workload?.charAt(0).toUpperCase()}${brief.workload?.slice(1)} build** — perfect choice!\n\n🔵🔴 **Processor brand preference?**\n${hint}\n\n> _Not sure? Select "Let AI decide" and I'll pick the best value for ₹${brief.budget.toLocaleString('en-IN')}._`,
+        `👍 **${brief.workload}** noted. How much time will they typically spend using it?\n> _This helps me balance durability, cooling, and performance for the real workload._`,
         ctx,
         [
-          '🔵 Intel (Core i5 / i7 / i9)',
-          '🔴 AMD Ryzen (Ryzen 5 / 7 / 9)',
-          '🤖 Let AI decide — best value for budget',
+          'Occasional / weekends',
+          'Daily school or home use',
+          'Long hours / intensive use',
         ],
       );
     }
 
-    if (brief.gpuPreference === undefined) {
-      const cpuLabel =
-        brief.cpuPreference === 'auto'
-          ? 'Best-value CPU auto-selected'
-          : `${brief.cpuPreference} CPU`;
-      const gpuHints: Record<string, string> = {
-        gaming: 'For gaming, **Nvidia RTX** has DLSS 3 AI upscaling. **AMD RX** has FSR 3 — both give great FPS at this budget.',
-        creator: 'For video editing, **Nvidia RTX** has CUDA & NVENC acceleration — highly recommended. **AMD RX** is also solid.',
-        workstation: 'For CAD, **Nvidia** has better driver stability. **AMD RX Pro** is premium alternative.',
-        streaming: 'For streaming, **Nvidia RTX** NVENC encoder is industry-leading. **AMD RX** with AV1 is excellent too.',
-      };
-      const hint = gpuHints[brief.workload] ?? 'Both Nvidia and AMD offer great performance at this budget.';
+    if (!brief.budget) {
       return this.askQuestion(
-        `✅ **${cpuLabel}** — good pick!\n\n🎮 **Graphics card (GPU) brand preference?**\n${hint}\n\n> _Not sure? I'll pick the best FPS-per-rupee GPU for your budget._`,
+        `💰 For a **${brief.usageIntensity}** ${brief.workload} workload, what is your total target budget in INR?\n> _I will use live in-stock components and keep the build within this amount._`,
         ctx,
-        [
-          '🟢 Nvidia (RTX 4060 / 4070 / 4080)',
-          '🔴 AMD Radeon (RX 7600 / 7700 / 7900)',
-          '🤖 Let AI decide — best performance/₹',
-        ],
+        ['₹60,000', '₹1,00,000', '₹1,50,000', '₹2,50,000', '₹3,00,000'],
       );
     }
 
-    if (!brief.targetDisplay) {
-      const gpuLabel =
-        brief.gpuPreference === 'auto'
-          ? 'Best GPU auto-selected'
-          : `${brief.gpuPreference} GPU`;
-      return this.askQuestion(
-        `🎮 **${gpuLabel}** — great!\n\n📺 **Target monitor resolution?**\n> _Resolution determines GPU workload — 1080p = ultra-high FPS, 4K = stunning visuals._`,
-        ctx,
-        [
-          '⚡ 1080p High FPS (144Hz+ Esports)',
-          '🎯 1440p QHD High-Refresh (sweet spot)',
-          '🌟 4K Ultra Gaming (cinematic)',
-          '🖥️ Multi-Monitor Workstation',
-        ],
-      );
-    }
-
-    // ── All 5 advisor questions answered — run the builder ────────────────
+    // ── Build from the goal-first brief; technical defaults stay controllable ─
     try {
+      const targetDisplay = brief.targetDisplay ?? '1080p144';
       const result = await buildGamingPc({
         budget: brief.budget,
         workload: brief.workload,
-        targetDisplay: brief.targetDisplay,
+        targetDisplay,
         needsStreaming: brief.needsStreaming ?? false,
         includePeripherals: false,
-        cpuBrand: brief.cpuPreference === 'auto' ? null : (brief.cpuBrand ?? null),
-        gpuBrand: brief.gpuPreference === 'auto' ? null : (brief.gpuBrand ?? null),
+        cpuBrand:
+          brief.cpuPreference === 'auto' ? null : (brief.cpuBrand ?? null),
+        gpuBrand:
+          brief.gpuPreference === 'auto' ? null : (brief.gpuBrand ?? null),
       });
 
       const products = result.components.map((c) => c.product);
@@ -684,11 +670,11 @@ export class GamingBuildAdvisorAgent implements Agent {
         streaming: '📡 Streaming + Gaming',
         workstation: '💼 Workstation',
       };
-      const cpuLabel = brief.cpuPreference === 'auto' ? 'AI-selected CPU' : (brief.cpuBrand ?? 'auto');
-      const gpuLabel = brief.gpuPreference === 'auto' ? 'AI-selected GPU' : (brief.gpuBrand ?? 'auto');
+      const cpuLabel = brief.cpuBrand ?? 'best compatible in-stock option';
+      const gpuLabel = brief.gpuBrand ?? 'best compatible in-stock option';
 
       let reply = `## 🖥️ Your Custom PC Build — ${totalFormatted} (${budgetRemaining})\n`;
-      reply += `> **Use Case:** ${workloadLabels[brief.workload] ?? brief.workload}  |  **CPU:** ${cpuLabel}  |  **GPU:** ${gpuLabel}  |  **Display:** ${brief.targetDisplay}\n\n`;
+      reply += `> **Use Case:** ${workloadLabels[brief.workload] ?? brief.workload}  |  **CPU:** ${cpuLabel}  |  **GPU:** ${gpuLabel}  |  **Display:** ${targetDisplay}\n\n`;
 
       if (result.partialNote) {
         reply += `> ⚠️ ${result.partialNote}\n\n`;
@@ -721,11 +707,23 @@ export class GamingBuildAdvisorAgent implements Agent {
         orders: [],
         followUp: [
           'Yes, add to cart',
-          brief.gpuBrand === 'Nvidia' ? 'Swap GPU to AMD' : 'Swap GPU to Nvidia',
+          brief.gpuBrand === 'Nvidia'
+            ? 'Swap GPU to AMD'
+            : 'Swap GPU to Nvidia',
           brief.cpuBrand === 'Intel' ? 'Swap CPU to AMD' : 'Swap CPU to Intel',
           'Can I save with a coupon?',
           'Show cheaper build',
         ],
+        explanation: {
+          why: [
+            `Matched to the stated ${brief.workload} workload and ${brief.usageIntensity} usage pattern.`,
+            'Selected from compatible, in-stock gaming components within the stated budget.',
+          ],
+          tradeoffs: [
+            'Technical brand preferences were left automatic because none were requested.',
+          ],
+          source: 'catalog',
+        },
         userContext: ctx.userContext
           ? {
               name: ctx.userContext.name,

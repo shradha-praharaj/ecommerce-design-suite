@@ -37,10 +37,7 @@ export function signJwtToken(payload: { id: number; email: string }, expiresInDa
 export function verifyJwtToken(token: string): { id: number; email?: string } | null {
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) {
-      const numericId = parseInt(token, 10);
-      return !isNaN(numericId) && numericId > 0 ? { id: numericId } : null;
-    }
+    if (parts.length !== 3) return null;
 
     const [encodedHeader, encodedPayload, signature] = parts;
     const expectedSignature = crypto
@@ -51,9 +48,7 @@ export function verifyJwtToken(token: string): { id: number; email?: string } | 
     const sigBuf = Buffer.from(signature);
     const expBuf = Buffer.from(expectedSignature);
     if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-      // If signature verification fails, check numeric ID fallback
-      const numericId = parseInt(token, 10);
-      return !isNaN(numericId) && numericId > 0 ? { id: numericId } : null;
+      return null;
     }
 
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
@@ -63,8 +58,7 @@ export function verifyJwtToken(token: string): { id: number; email?: string } | 
 
     return { id: Number(payload.id), email: payload.email };
   } catch {
-    const numericId = parseInt(token, 10);
-    return !isNaN(numericId) && numericId > 0 ? { id: numericId } : null;
+    return null;
   }
 }
 

@@ -211,7 +211,10 @@ router.get(
       .select()
       .from(productsTable)
       .where(
-        gte(sql`CAST(${productsTable.reviewCount} AS numeric)`, minReviews),
+        and(
+          eq(productsTable.inStock, true),
+          gte(sql`CAST(${productsTable.reviewCount} AS numeric)`, minReviews),
+        ),
       )
       .orderBy(desc(productsTable.rating), desc(productsTable.reviewCount))
       .limit(limit);

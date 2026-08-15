@@ -67,6 +67,23 @@ export class ProductSearchAgent implements Agent {
       products,
       orders: [],
       followUp,
+      explanation: {
+        why: [
+          parsed.category
+            ? `Filtered to the ${parsed.category} category requested.`
+            : 'Matched the product terms in your request against the catalog.',
+          parsed.maxPrice != null
+            ? `Kept products at or below ₹${parsed.maxPrice.toLocaleString('en-IN')}.`
+            : 'No price ceiling was applied.',
+          'Only products currently marked in stock were returned.',
+        ],
+        tradeoffs: [
+          parsed.sortByRating
+            ? 'Results favor rating, which may trade lower price for stronger review history.'
+            : 'You can request a different budget, brand, or sort preference.',
+        ],
+        source: 'catalog',
+      },
       userContext: userId
         ? {
             name: userContext.name,

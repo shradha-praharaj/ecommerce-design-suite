@@ -1,22 +1,20 @@
 import React from "react";
 import { Link, useLocation } from 'wouter';
-import {
-  Smartphone,
-  Laptop,
-  Headphones,
-  Camera,
-  Home,
-  Gamepad2,
-  Timer,
-} from 'lucide-react';
+import { Timer } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { AppLayout } from "../components/AppLayout";
+import { AppLayout } from '../components/AppLayout';
 import { FeaturedCarousel } from '../components/FeaturedCarousel';
-import { RecommendationWidget } from "../components/RecommendationWidget";
-import { AnonymousRecommendationWidget } from "../components/AnonymousRecommendationWidget";
-import { useListProducts, useListDeals, useGetHomepageRecommendations, useAddToCart, getGetCartQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useUser } from "../context/UserContext";
+import { RecommendationWidget } from '../components/RecommendationWidget';
+import { AnonymousRecommendationWidget } from '../components/AnonymousRecommendationWidget';
+import {
+  useListProducts,
+  useListDeals,
+  useGetHomepageRecommendations,
+  useAddToCart,
+  getGetCartQueryKey,
+} from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '../context/UserContext';
 import {
   onProductImageError,
   resolveProductImageSrc,
@@ -102,11 +100,6 @@ function RecommendationSkeleton() {
 }
 
 // Animation variants
-const fadeInUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 },
-};
-
 const staggerContainer = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08 } },
@@ -179,47 +172,6 @@ export default function HomePage() {
   return (
     <AppLayout activePage="home">
       <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white min-h-screen pb-24 transition-colors">
-        {/* Category browsing strip */}
-        <div className="border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
-          <motion.div
-            className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-start overflow-x-auto gap-5 sm:gap-8"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {[
-              { name: 'Mobiles', icon: Smartphone },
-              { name: 'Laptops', icon: Laptop },
-              { name: 'Audio', icon: Headphones },
-              { name: 'Cameras', icon: Camera },
-              { name: 'Smart Home', icon: Home },
-              { name: 'Gaming', icon: Gamepad2 },
-            ].map((cat) => (
-              <motion.div
-                key={cat.name}
-                variants={fadeInUp}
-                transition={{ duration: 0.35 }}
-              >
-                <Link
-                  href={`/category/${encodeURIComponent(cat.name)}`}
-                  className="flex flex-col items-center gap-2 min-w-max group cursor-pointer"
-                  data-testid={`category-${cat.name}`}
-                >
-                  <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors border border-gray-100 dark:border-slate-700">
-                    <cat.icon
-                      size={20}
-                      className="text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                    {cat.name}
-                  </span>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-
         {/* Featured Product Carousel */}
         {isFeaturedLoading && <CarouselSkeleton />}
         {!isFeaturedLoading &&

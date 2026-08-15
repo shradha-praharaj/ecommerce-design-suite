@@ -33,8 +33,11 @@ export class PopularProductsAgent implements Agent {
   ): Promise<AgentResponse> {
     try {
       // Fetch popular products from API
+      const apiBaseUrl =
+        process.env.API_BASE_URL ||
+        `http://localhost:${process.env.PORT || '5000'}`;
       const response = await fetch(
-        'http://localhost:3000/api/products/popular?limit=5&minReviews=3',
+        `${apiBaseUrl}/api/products/popular?limit=5&minReviews=3`,
         {
           method: 'GET',
           headers: {
@@ -94,6 +97,16 @@ export class PopularProductsAgent implements Agent {
         followUp: products.map(
           (p: PopularProduct) => `Tell me more about ${p.name}`,
         ),
+        explanation: {
+          why: [
+            'Popularity was explicitly requested, so results use listed ratings and review counts.',
+            'Only products currently marked in stock were included.',
+          ],
+          tradeoffs: [
+            'Popularity is not the same as personal fit; ask for a goal or budget to re-rank.',
+          ],
+          source: 'catalog',
+        },
         userContext: ctx.userContext
           ? { recentOrderCount: ctx.userContext.recentOrders?.length || 0 }
           : null,

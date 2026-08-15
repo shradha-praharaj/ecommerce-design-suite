@@ -16,6 +16,8 @@ import {
   Headphones,
   Camera,
   Cable,
+  Home,
+  Gamepad2,
   Tag,
 } from 'lucide-react';
 import { useGetCart, getGetCartQueryKey } from '@workspace/api-client-react';
@@ -34,6 +36,8 @@ const categories = [
   { label: 'Accessories', icon: Cable },
   { label: 'Audio', icon: Headphones },
   { label: 'Cameras', icon: Camera },
+  { label: 'Smart Home', icon: Home },
+  { label: 'Gaming', icon: Gamepad2 },
 ];
 
 export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
@@ -288,7 +292,7 @@ export function AppLayout({ children, activePage = 'home' }: AppLayoutProps) {
                   key={label}
                   href={`/category/${encodeURIComponent(label)}`}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`h-full px-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`h-full px-3 flex items-center gap-2 whitespace-nowrap text-sm font-medium border-b-2 transition-colors ${
                     isActive
                       ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/30'
                       : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-600'

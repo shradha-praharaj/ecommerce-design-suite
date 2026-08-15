@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "build:watch": "node ./build.mjs --watch",
     "start": "node --enable-source-maps --import ./dist/preload.mjs ./dist/index.mjs",
-    "start:watch": "node --watch --watch-preserve-output --enable-source-maps --import ./dist/preload.mjs ./dist/index.mjs",
+    "start:watch": "node --watch --watch-preserve-output --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
