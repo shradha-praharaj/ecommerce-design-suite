@@ -50,14 +50,14 @@
     "semantic_hash": "5cd9ae4fc688353236c3b92e8f06dfcc"
   },
   "artifacts/api-server/build.mjs": {
-    "mtime": 1786806778.19996,
+    "mtime": 1786847276.3739078,
     "ast_hash": "adc71ae1f0c1608440bf90dbcdf9b885",
-    "semantic_hash": ""
+    "semantic_hash": "adc71ae1f0c1608440bf90dbcdf9b885"
   },
   "artifacts/api-server/package.json": {
-    "mtime": 1786806579.5286505,
-    "ast_hash": "edf6ca9dc9139530f4a751d075090c00",
-    "semantic_hash": ""
+    "mtime": 1786847276.3739078,
+    "ast_hash": "4b15e35974ec9a7469b1a35f21cb2dc8",
+    "semantic_hash": "4b15e35974ec9a7469b1a35f21cb2dc8"
   },
   "artifacts/api-server/src/agents/add-to-cart-agent.ts": {
     "mtime": 1785046648.8683062,
@@ -70,9 +70,9 @@
     "semantic_hash": "bba8ce405ad2125e6ad3ae76decfa6b3"
   },
   "artifacts/api-server/src/agents/ai-provider.ts": {
-    "mtime": 1786808040.9323642,
-    "ast_hash": "fbf77aee362225c183255ffb33079073",
-    "semantic_hash": ""
+    "mtime": 1786847276.3754294,
+    "ast_hash": "7f772c4c0f90bae46e31ce07774dc1be",
+    "semantic_hash": "7f772c4c0f90bae46e31ce07774dc1be"
   },
   "artifacts/api-server/src/agents/bundle-advisor-agent.ts": {
     "mtime": 1785046488.7969031,
@@ -80,9 +80,9 @@
     "semantic_hash": "aa0c6d179503797a283c283f8f7b78e2"
   },
   "artifacts/api-server/src/agents/clarification-policy.ts": {
-    "mtime": 1786804191.6366773,
-    "ast_hash": "1e456e8c08362971f92f91213004d36b",
-    "semantic_hash": ""
+    "mtime": 1786847276.3764353,
+    "ast_hash": "96b1eaebcb61a3715e06239989422c73",
+    "semantic_hash": "96b1eaebcb61a3715e06239989422c73"
   },
   "artifacts/api-server/src/agents/compare-agent.ts": {
     "mtime": 1785655859.1574216,
@@ -90,59 +90,59 @@
     "semantic_hash": "4379e4c8c7a69878ca1eb31b49c903c6"
   },
   "artifacts/api-server/src/agents/gaming-build-advisor-agent.ts": {
-    "mtime": 1786804191.63725,
-    "ast_hash": "81da8ce2492a107bfb83e51d01a158de",
-    "semantic_hash": ""
+    "mtime": 1786857450.0711453,
+    "ast_hash": "1f1ea5cb30a7334bbe218173d7fb23b1",
+    "semantic_hash": "1f1ea5cb30a7334bbe218173d7fb23b1"
   },
   "artifacts/api-server/src/agents/greeting-agent.ts": {
-    "mtime": 1786808263.0503216,
+    "mtime": 1786847276.3784366,
     "ast_hash": "e4d34c5e1b86e0ddd10e9d178f650d6c",
-    "semantic_hash": ""
+    "semantic_hash": "e4d34c5e1b86e0ddd10e9d178f650d6c"
   },
   "artifacts/api-server/src/agents/guardrail-agent.ts": {
-    "mtime": 1786805026.1362612,
+    "mtime": 1786847276.3794348,
     "ast_hash": "f6098e2227bbf673f5d23a8407a0c041",
-    "semantic_hash": ""
+    "semantic_hash": "f6098e2227bbf673f5d23a8407a0c041"
   },
   "artifacts/api-server/src/agents/guided-product-advisor-agent.ts": {
-    "mtime": 1786804191.6383276,
-    "ast_hash": "56be89bd56d2726f680ee733f9068f8c",
-    "semantic_hash": ""
+    "mtime": 1786847276.3804343,
+    "ast_hash": "3273472c5df80ebe26432f2065de99b6",
+    "semantic_hash": "3273472c5df80ebe26432f2065de99b6"
   },
   "artifacts/api-server/src/agents/index.ts": {
-    "mtime": 1786807002.6619654,
-    "ast_hash": "833a49d703c668bd4e952a8d2d5e8465",
-    "semantic_hash": ""
+    "mtime": 1786847276.3804343,
+    "ast_hash": "c13e1d7d2a1ea92d7b71e9e46c015cf1",
+    "semantic_hash": "c13e1d7d2a1ea92d7b71e9e46c015cf1"
   },
   "artifacts/api-server/src/agents/orders-agent.ts": {
-    "mtime": 1785655859.1589735,
-    "ast_hash": "4291fd4cf370c5e4c7d6b904d05fb4f4",
-    "semantic_hash": "4291fd4cf370c5e4c7d6b904d05fb4f4"
+    "mtime": 1786848885.529242,
+    "ast_hash": "ed7f967fda526e8ef010a736e8208879",
+    "semantic_hash": "ed7f967fda526e8ef010a736e8208879"
   },
   "artifacts/api-server/src/agents/popular-products-agent.ts": {
     "mtime": 1786804191.6393216,
     "ast_hash": "abd6e09f16958cf64479fa2cde557afb",
-    "semantic_hash": ""
+    "semantic_hash": "abd6e09f16958cf64479fa2cde557afb"
   },
   "artifacts/api-server/src/agents/product-search-agent.ts": {
-    "mtime": 1786804191.6393216,
-    "ast_hash": "364600b9ba81ab8ebf1ce458a62d0b27",
-    "semantic_hash": ""
+    "mtime": 1786847276.3884685,
+    "ast_hash": "d49ba6c1b5479ec3d18b18d12dd5c940",
+    "semantic_hash": "d49ba6c1b5479ec3d18b18d12dd5c940"
   },
   "artifacts/api-server/src/agents/router-agent.ts": {
-    "mtime": 1786804191.6402578,
-    "ast_hash": "3291c35a146c13189aa5c1aa48e073c8",
-    "semantic_hash": ""
+    "mtime": 1786847276.3894677,
+    "ast_hash": "e8951a02e920b3bbcb181321d7dee7f5",
+    "semantic_hash": "e8951a02e920b3bbcb181321d7dee7f5"
   },
   "artifacts/api-server/src/agents/self-correction-engine.ts": {
-    "mtime": 1786806063.3556228,
+    "mtime": 1786847276.3904672,
     "ast_hash": "d7b2a8b7806c65d6851217b4ab3e152e",
-    "semantic_hash": ""
+    "semantic_hash": "d7b2a8b7806c65d6851217b4ab3e152e"
   },
   "artifacts/api-server/src/agents/supervisor-agent.ts": {
-    "mtime": 1786805981.8232348,
-    "ast_hash": "af75bf22e26dadd67114cfa691b399b8",
-    "semantic_hash": ""
+    "mtime": 1786847276.391468,
+    "ast_hash": "9d5976a8a5eb8831bc3ef0602b900209",
+    "semantic_hash": "9d5976a8a5eb8831bc3ef0602b900209"
   },
   "artifacts/api-server/src/agents/top-picks-agent.ts": {
     "mtime": 1785045071.7776265,
@@ -150,9 +150,9 @@
     "semantic_hash": "20f5a63c860a2d25a5a6c21155d38167"
   },
   "artifacts/api-server/src/agents/types.ts": {
-    "mtime": 1786804995.8803184,
-    "ast_hash": "04c32840e6d969a029f4a9e847b68495",
-    "semantic_hash": ""
+    "mtime": 1786847276.3929713,
+    "ast_hash": "7be4e7b594d8a324d71c4c0e2446d3b6",
+    "semantic_hash": "7be4e7b594d8a324d71c4c0e2446d3b6"
   },
   "artifacts/api-server/src/agents/unknown-agent.ts": {
     "mtime": 1785655859.160548,
@@ -160,9 +160,9 @@
     "semantic_hash": "c34ed9f63c2c8703accf68363bd89b7d"
   },
   "artifacts/api-server/src/agents/user-context.ts": {
-    "mtime": 1786808242.9465003,
+    "mtime": 1786847276.3929713,
     "ast_hash": "9be939be551527b5ac436aa3847ad0d9",
-    "semantic_hash": ""
+    "semantic_hash": "9be939be551527b5ac436aa3847ad0d9"
   },
   "artifacts/api-server/src/app.ts": {
     "mtime": 1785660330.873142,
@@ -177,7 +177,7 @@
   "artifacts/api-server/src/lib/crypto.ts": {
     "mtime": 1786804191.6422575,
     "ast_hash": "576c6b9406c75b8af00b550eb8e6f512",
-    "semantic_hash": ""
+    "semantic_hash": "576c6b9406c75b8af00b550eb8e6f512"
   },
   "artifacts/api-server/src/lib/logger.ts": {
     "mtime": 1785655859.1621225,
@@ -195,29 +195,29 @@
     "semantic_hash": "58434e2e5d8fe839b61c993a1db085aa"
   },
   "artifacts/api-server/src/routes/ai.ts": {
-    "mtime": 1786808255.144297,
+    "mtime": 1786847276.3939762,
     "ast_hash": "257df5294c7a16a76091bde8bfc81a4f",
-    "semantic_hash": ""
+    "semantic_hash": "257df5294c7a16a76091bde8bfc81a4f"
   },
   "artifacts/api-server/src/routes/auth.ts": {
     "mtime": 1785809184.4511096,
     "ast_hash": "115b0f0be7cd3eefb11fd3c6077edef7",
-    "semantic_hash": ""
+    "semantic_hash": "115b0f0be7cd3eefb11fd3c6077edef7"
   },
   "artifacts/api-server/src/routes/cart.ts": {
     "mtime": 1785809200.8764899,
     "ast_hash": "eabe8aa180fce396243b29085e7eef2f",
-    "semantic_hash": ""
+    "semantic_hash": "eabe8aa180fce396243b29085e7eef2f"
   },
   "artifacts/api-server/src/routes/checkout.ts": {
     "mtime": 1785809194.8691149,
     "ast_hash": "276f2debba6accd766318a325ed1f6e6",
-    "semantic_hash": ""
+    "semantic_hash": "276f2debba6accd766318a325ed1f6e6"
   },
   "artifacts/api-server/src/routes/coupons.ts": {
     "mtime": 1785809225.4099255,
     "ast_hash": "0492dcb629cc0a7551940a671ed74003",
-    "semantic_hash": ""
+    "semantic_hash": "0492dcb629cc0a7551940a671ed74003"
   },
   "artifacts/api-server/src/routes/gaming.ts": {
     "mtime": 1785655859.1641293,
@@ -237,22 +237,22 @@
   "artifacts/api-server/src/routes/orders.ts": {
     "mtime": 1785809214.1728456,
     "ast_hash": "38a4f42f4fad782ed84b3ec039a11345",
-    "semantic_hash": ""
+    "semantic_hash": "38a4f42f4fad782ed84b3ec039a11345"
   },
   "artifacts/api-server/src/routes/products.ts": {
     "mtime": 1786804191.6442564,
     "ast_hash": "1842a73175854931a34002e45e2929dd",
-    "semantic_hash": ""
+    "semantic_hash": "1842a73175854931a34002e45e2929dd"
   },
   "artifacts/api-server/src/routes/recommendations.ts": {
     "mtime": 1785809518.9998038,
     "ast_hash": "666cc0ea8ccff361ff2995f23d7c25a3",
-    "semantic_hash": ""
+    "semantic_hash": "666cc0ea8ccff361ff2995f23d7c25a3"
   },
   "artifacts/api-server/src/routes/reviews.ts": {
     "mtime": 1785809261.5399318,
     "ast_hash": "406ace7284f754829a32c223feefbd57",
-    "semantic_hash": ""
+    "semantic_hash": "406ace7284f754829a32c223feefbd57"
   },
   "artifacts/api-server/src/routes/session-coupons.ts": {
     "mtime": 1785655859.1661289,
@@ -260,9 +260,9 @@
     "semantic_hash": "1efb42fea72e8dc4cfe69df678ecc139"
   },
   "artifacts/api-server/src/services/pc-builder.ts": {
-    "mtime": 1785655859.1661289,
-    "ast_hash": "7f2f79156c799f2c526c72094043f19d",
-    "semantic_hash": "7f2f79156c799f2c526c72094043f19d"
+    "mtime": 1786847276.395655,
+    "ast_hash": "63b5476878e6990f57c8f5eeafc93c5f",
+    "semantic_hash": "63b5476878e6990f57c8f5eeafc93c5f"
   },
   "artifacts/api-server/src/services/pricing.ts": {
     "mtime": 1785655859.1661289,
@@ -670,9 +670,9 @@
     "semantic_hash": "976f386926b73b267372c09965508e57"
   },
   "artifacts/shopnow/src/components/AIChatbot.tsx": {
-    "mtime": 1786805064.1977322,
-    "ast_hash": "c99a0dac7743afa087c12143ac8f0d18",
-    "semantic_hash": ""
+    "mtime": 1786847276.3966618,
+    "ast_hash": "f4a716689e1019e773feef122249c8d7",
+    "semantic_hash": "f4a716689e1019e773feef122249c8d7"
   },
   "artifacts/shopnow/src/components/AnonymousRecommendationWidget.tsx": {
     "mtime": 1785655859.1685598,
@@ -682,7 +682,7 @@
   "artifacts/shopnow/src/components/AppLayout.tsx": {
     "mtime": 1786799644.969291,
     "ast_hash": "89a8e2803ace41359e5f6bfacd61227a",
-    "semantic_hash": ""
+    "semantic_hash": "89a8e2803ace41359e5f6bfacd61227a"
   },
   "artifacts/shopnow/src/components/CouponBox.tsx": {
     "mtime": 1785655859.1702113,
@@ -1042,7 +1042,7 @@
   "artifacts/shopnow/src/pages/CartPage.tsx": {
     "mtime": 1785808058.9450524,
     "ast_hash": "637ed89a3a96f3d8f586ca851b29a0b3",
-    "semantic_hash": ""
+    "semantic_hash": "637ed89a3a96f3d8f586ca851b29a0b3"
   },
   "artifacts/shopnow/src/pages/CategoryPage.tsx": {
     "mtime": 1786022001.3331673,
@@ -1052,12 +1052,12 @@
   "artifacts/shopnow/src/pages/CheckoutPage.tsx": {
     "mtime": 1785808057.178739,
     "ast_hash": "e7324c7a573013df817feda44a65e719",
-    "semantic_hash": ""
+    "semantic_hash": "e7324c7a573013df817feda44a65e719"
   },
   "artifacts/shopnow/src/pages/HomePage.tsx": {
     "mtime": 1786799644.9702919,
     "ast_hash": "98f107572a64ba356d6f60a011fdec3e",
-    "semantic_hash": ""
+    "semantic_hash": "98f107572a64ba356d6f60a011fdec3e"
   },
   "artifacts/shopnow/src/pages/LoginPage.tsx": {
     "mtime": 1785656190.0683506,
@@ -1065,9 +1065,9 @@
     "semantic_hash": "04327ce71eb1fe7d89080fb883b47636"
   },
   "artifacts/shopnow/src/pages/OrderDetailPage.tsx": {
-    "mtime": 1785655859.175175,
-    "ast_hash": "b84526d8d6f8d4865c8362025a5b71d4",
-    "semantic_hash": "b84526d8d6f8d4865c8362025a5b71d4"
+    "mtime": 1786847491.514169,
+    "ast_hash": "cc5eac0bbbdb20d966c049273d6bd242",
+    "semantic_hash": "cc5eac0bbbdb20d966c049273d6bd242"
   },
   "artifacts/shopnow/src/pages/OrderHistoryPage.tsx": {
     "mtime": 1785655859.1761756,
@@ -1082,7 +1082,7 @@
   "artifacts/shopnow/src/pages/PDPPage.tsx": {
     "mtime": 1785808057.741587,
     "ast_hash": "3026f16d717370535586733886bd4e9b",
-    "semantic_hash": ""
+    "semantic_hash": "3026f16d717370535586733886bd4e9b"
   },
   "artifacts/shopnow/src/pages/SearchResultsPage.tsx": {
     "mtime": 1784963227.8614094,
@@ -1105,9 +1105,9 @@
     "semantic_hash": "781b72f5f19966343ae526fabb541f12"
   },
   "artifacts/shopnow/vercel.json": {
-    "mtime": 1785656190.0688758,
-    "ast_hash": "8cb3b8cd3fe5c62af6611d5a4fb035a1",
-    "semantic_hash": "8cb3b8cd3fe5c62af6611d5a4fb035a1"
+    "mtime": 1786848185.0698805,
+    "ast_hash": "d12172ace8026fe0e575392d1e22dd0c",
+    "semantic_hash": "d12172ace8026fe0e575392d1e22dd0c"
   },
   "artifacts/shopnow/vite.config.ts": {
     "mtime": 1785655859.177174,
@@ -1135,9 +1135,9 @@
     "semantic_hash": "4df2955eddf53a7d5a1d36f057198232"
   },
   "lib/api-client-react/src/index.ts": {
-    "mtime": 1784252058.0,
-    "ast_hash": "a0f98c971a5e7ccea353248d0a13670d",
-    "semantic_hash": "a0f98c971a5e7ccea353248d0a13670d"
+    "mtime": 1786847491.1996195,
+    "ast_hash": "e04fa2bbfed6602217f4a6cf4adffecf",
+    "semantic_hash": "e04fa2bbfed6602217f4a6cf4adffecf"
   },
   "lib/api-client-react/tsconfig.json": {
     "mtime": 1783962110.0,
@@ -1340,9 +1340,9 @@
     "semantic_hash": "5f961e62bb12a813ce0ebfaf823556ae"
   },
   "lib/db/drizzle.config.ts": {
-    "mtime": 1786806400.1434004,
-    "ast_hash": "8aa69fe260f7c07779a9cde66de95697",
-    "semantic_hash": ""
+    "mtime": 1786847276.455781,
+    "ast_hash": "a8379df5db954fd69013e4fc8a76fdba",
+    "semantic_hash": "a8379df5db954fd69013e4fc8a76fdba"
   },
   "lib/db/package.json": {
     "mtime": 1784447291.6228743,
@@ -1390,9 +1390,9 @@
     "semantic_hash": "fd4b6062875b77c04ba7a6686328a137"
   },
   "lib/db/src/schema/index.ts": {
-    "mtime": 1786804663.191446,
-    "ast_hash": "0c42760a1a10e10812b93f911e0bd584",
-    "semantic_hash": ""
+    "mtime": 1786847276.4562848,
+    "ast_hash": "fda80a5dfbaaf7618a127b510e902a37",
+    "semantic_hash": "fda80a5dfbaaf7618a127b510e902a37"
   },
   "lib/db/src/schema/orders.ts": {
     "mtime": 1785655859.1821897,
@@ -1420,9 +1420,9 @@
     "semantic_hash": "8371c8684ba519db4d8dbe0f71cdceb9"
   },
   "lib/db/src/seed.ts": {
-    "mtime": 1785655859.1831896,
-    "ast_hash": "f2679aa11fdcc00c4ff612c8be378b9d",
-    "semantic_hash": "f2679aa11fdcc00c4ff612c8be378b9d"
+    "mtime": 1786847276.4583223,
+    "ast_hash": "1c715f312caec286877bad925640204d",
+    "semantic_hash": "1c715f312caec286877bad925640204d"
   },
   "lib/db/tsconfig.json": {
     "mtime": 1785655859.1831896,
@@ -1430,9 +1430,9 @@
     "semantic_hash": "1aff9991be2ef5362986cd52df5f03d9"
   },
   "package.json": {
-    "mtime": 1786805902.7203777,
+    "mtime": 1786847276.4588532,
     "ast_hash": "c5f3abd17c2a7ad39f52b956eea3e878",
-    "semantic_hash": ""
+    "semantic_hash": "c5f3abd17c2a7ad39f52b956eea3e878"
   },
   "pc_components_shopnow.json": {
     "mtime": 1785118298.2209423,
@@ -1962,7 +1962,7 @@
   "artifacts/shopnow/index.html": {
     "mtime": 1785808270.4154742,
     "ast_hash": "494973c20a7b35fa313b51fcc6ffa9fe",
-    "semantic_hash": ""
+    "semantic_hash": "494973c20a7b35fa313b51fcc6ffa9fe"
   },
   "artifacts/shopnow/public/robots.txt": {
     "mtime": 1784251996.0,
@@ -1975,9 +1975,9 @@
     "semantic_hash": "66734b1838ca31aa06410959b4ae2dd1"
   },
   "docs/AGENTIC-AI-ARCHITECTURE.md": {
-    "mtime": 1786808050.3157873,
-    "ast_hash": "cd24175cea54db16145c1ebd3ca36a13",
-    "semantic_hash": ""
+    "mtime": 1786847276.3976614,
+    "ast_hash": "b8b36454a46e6248e6c2e30d3536734c",
+    "semantic_hash": "b8b36454a46e6248e6c2e30d3536734c"
   },
   "docs/ARCHITECTURE.md": {
     "mtime": 1785655859.1781754,
@@ -2017,7 +2017,7 @@
   "lib/api-spec/openapi.yaml": {
     "mtime": 1786804191.6472578,
     "ast_hash": "e2b162c9ae55f65fac4c5d7e33cab4f7",
-    "semantic_hash": ""
+    "semantic_hash": "e2b162c9ae55f65fac4c5d7e33cab4f7"
   },
   "pnpm-workspace.yaml": {
     "mtime": 1784447250.288366,
@@ -2160,83 +2160,123 @@
     "semantic_hash": "6e109c00150a10582b8ba647da0daf3f"
   },
   "artifacts/api-server/src/agents/conversation-memory-agent.test.ts": {
-    "mtime": 1786804812.2654455,
-    "ast_hash": "8953b70ae4b40e4075446aba5cb324ba",
-    "semantic_hash": ""
+    "mtime": 1786847276.3764353,
+    "ast_hash": "f8dff43c9d886fe40b239a0e54993ff5",
+    "semantic_hash": "f8dff43c9d886fe40b239a0e54993ff5"
   },
   "artifacts/api-server/src/agents/conversation-memory-agent.ts": {
-    "mtime": 1786805011.9389408,
+    "mtime": 1786847276.377435,
     "ast_hash": "e07c2fbed8c5296241dd532ea5a4c78b",
-    "semantic_hash": ""
+    "semantic_hash": "e07c2fbed8c5296241dd532ea5a4c78b"
   },
   "artifacts/api-server/src/agents/langgraph/graph.ts": {
-    "mtime": 1786805968.7676792,
-    "ast_hash": "16435ebd0ab817e50b56517fa6e79624",
-    "semantic_hash": ""
+    "mtime": 1786847276.3814344,
+    "ast_hash": "1baaf6ae6793d9c62fd93a688be981e3",
+    "semantic_hash": "1baaf6ae6793d9c62fd93a688be981e3"
   },
   "artifacts/api-server/src/agents/langgraph/index.ts": {
-    "mtime": 1786805973.1620128,
-    "ast_hash": "de87ef477e312cbde214ba38566bd390",
-    "semantic_hash": ""
+    "mtime": 1786847276.3814344,
+    "ast_hash": "1a2383b0ecc9018064a976b89a57081b",
+    "semantic_hash": "1a2383b0ecc9018064a976b89a57081b"
   },
   "artifacts/api-server/src/agents/langgraph/langchain-provider.ts": {
-    "mtime": 1786805931.4304311,
-    "ast_hash": "c9e80329f6ef53ec8a5f67757e89a7d3",
-    "semantic_hash": ""
+    "mtime": 1786847276.3824348,
+    "ast_hash": "93c472c6b0b7c969eca3b29e756d2ecb",
+    "semantic_hash": "93c472c6b0b7c969eca3b29e756d2ecb"
   },
   "artifacts/api-server/src/agents/langgraph/nodes/clarification-node.ts": {
-    "mtime": 1786805947.2266538,
-    "ast_hash": "1137d91829b31d9663a2e9b057ac967e",
-    "semantic_hash": ""
+    "mtime": 1786847276.3824348,
+    "ast_hash": "0ecf42ecbaf24d09a14d4103e1cccc6c",
+    "semantic_hash": "0ecf42ecbaf24d09a14d4103e1cccc6c"
   },
   "artifacts/api-server/src/agents/langgraph/nodes/guardrail-node.ts": {
-    "mtime": 1786805962.795336,
-    "ast_hash": "495e259884f236199e07c2f28d47fea7",
-    "semantic_hash": ""
+    "mtime": 1786847276.3824348,
+    "ast_hash": "e4f3c2f476180c085ef816aa1d8228a1",
+    "semantic_hash": "e4f3c2f476180c085ef816aa1d8228a1"
   },
   "artifacts/api-server/src/agents/langgraph/nodes/router-node.ts": {
-    "mtime": 1786805942.5996983,
-    "ast_hash": "ac23680480c261496275d4b01f0e520b",
-    "semantic_hash": ""
+    "mtime": 1786847276.3839405,
+    "ast_hash": "fd6f3cfa8d39083f16ca3216ecdd425b",
+    "semantic_hash": "fd6f3cfa8d39083f16ca3216ecdd425b"
   },
   "artifacts/api-server/src/agents/langgraph/nodes/self-correction-node.ts": {
-    "mtime": 1786805937.7023256,
-    "ast_hash": "38bc1cb601254faceb31e03443a094c9",
-    "semantic_hash": ""
+    "mtime": 1786847276.3839405,
+    "ast_hash": "23d9f5ac6ed3a438538585551c40aa65",
+    "semantic_hash": "23d9f5ac6ed3a438538585551c40aa65"
   },
   "artifacts/api-server/src/agents/langgraph/nodes/specialist-node.ts": {
-    "mtime": 1786805952.7796202,
-    "ast_hash": "6d3b17f508ae38768b621bebafc2737d",
-    "semantic_hash": ""
+    "mtime": 1786847276.385462,
+    "ast_hash": "2928892d72c0085b341862078bbc9e0c",
+    "semantic_hash": "2928892d72c0085b341862078bbc9e0c"
   },
   "artifacts/api-server/src/agents/langgraph/state.ts": {
-    "mtime": 1786805924.4360068,
-    "ast_hash": "b3b8fd4aa2590de52e5f7a7a40881adc",
-    "semantic_hash": ""
+    "mtime": 1786847276.3864682,
+    "ast_hash": "58dad7c80ce462068dfedaa1feba5149",
+    "semantic_hash": "58dad7c80ce462068dfedaa1feba5149"
   },
   "artifacts/api-server/src/agents/privacy-guard.ts": {
-    "mtime": 1786804978.2353427,
-    "ast_hash": "ae1999c3801d91410451ba77e6ff1353",
-    "semantic_hash": ""
+    "mtime": 1786847276.3874664,
+    "ast_hash": "7689dd9a3ee494c33d3b231839e6412c",
+    "semantic_hash": "7689dd9a3ee494c33d3b231839e6412c"
   },
   "artifacts/api-server/src/agents/supervisor-agent.test.ts": {
-    "mtime": 1786804947.8859248,
-    "ast_hash": "7df7c86277b5536d1e4f04f3ae9ced0c",
-    "semantic_hash": ""
+    "mtime": 1786847276.391468,
+    "ast_hash": "b665b58fcd4d30526b5aaa65bd2ba646",
+    "semantic_hash": "b665b58fcd4d30526b5aaa65bd2ba646"
   },
   "lib/db/src/schema/conversations.ts": {
     "mtime": 1786804191.648256,
     "ast_hash": "b8fc9a3104187a73703192169fa9913f",
-    "semantic_hash": ""
+    "semantic_hash": "b8fc9a3104187a73703192169fa9913f"
   },
   "docs/AI-CHATBOT-MEMORY-GUARDRAILS.md": {
     "mtime": 1786804191.646303,
     "ast_hash": "a065c5cf31d98d54a7554323cebbd5d9",
-    "semantic_hash": ""
+    "semantic_hash": "a065c5cf31d98d54a7554323cebbd5d9"
   },
   "graphify-out/memory/query_20260804_014838_how_do_you_handle_self_correction_tradeoff_vs_late.md": {
     "mtime": 1785808118.3455257,
     "ast_hash": "5d3a306decfb595f84983021940ab5aa",
-    "semantic_hash": ""
+    "semantic_hash": "5d3a306decfb595f84983021940ab5aa"
+  },
+  "artifacts/api-server/src/agents/gaming-build-advisor-agent.test.ts": {
+    "mtime": 1786857448.7649727,
+    "ast_hash": "6d5bf974e00435e3b67055f6600e490b",
+    "semantic_hash": "6d5bf974e00435e3b67055f6600e490b"
+  },
+  "artifacts/api-server/src/agents/orders-agent.test.ts": {
+    "mtime": 1786848884.6220677,
+    "ast_hash": "409e547e2d5102b9fb82ba2a971802a8",
+    "semantic_hash": "409e547e2d5102b9fb82ba2a971802a8"
+  },
+  "artifacts/api-server/src/agents/pc-builder-expertise.ts": {
+    "mtime": 1786847276.3874664,
+    "ast_hash": "12f7e9edc335634c02efcc9678cbb8c4",
+    "semantic_hash": "12f7e9edc335634c02efcc9678cbb8c4"
+  },
+  "artifacts/api-server/src/agents/responsible-ai-agent.ts": {
+    "mtime": 1786847276.3894677,
+    "ast_hash": "05f75afe3946b9fe2ab3ccd6e1e66e52",
+    "semantic_hash": "05f75afe3946b9fe2ab3ccd6e1e66e52"
+  },
+  "artifacts/api-server/src/routes/orders-auth.test.ts": {
+    "mtime": 1786847490.8539228,
+    "ast_hash": "df718cacebafcd5722281c1ff1ba03d7",
+    "semantic_hash": "df718cacebafcd5722281c1ff1ba03d7"
+  },
+  "lib/db/src/schema/ai-preferences.ts": {
+    "mtime": 1786847276.4562848,
+    "ast_hash": "f9037365ec14e1a64a3f978378ba6309",
+    "semantic_hash": "f9037365ec14e1a64a3f978378ba6309"
+  },
+  "docs/PC-BUILDER-EXPERTISE-SYSTEM.md": {
+    "mtime": 1786847276.3986616,
+    "ast_hash": "65094febf5d69f379ca52066115f9d4b",
+    "semantic_hash": "65094febf5d69f379ca52066115f9d4b"
+  },
+  "docs/PC-BUILDER-QUICK-START.md": {
+    "mtime": 1786847276.3986616,
+    "ast_hash": "c7c5e0872f4b506b65c739f0e6163ab4",
+    "semantic_hash": "c7c5e0872f4b506b65c739f0e6163ab4"
   }
 }

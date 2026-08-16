@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearch } from 'wouter';
 import { AppLayout } from '../components/AppLayout';
 import { ProductCard } from '../components/ProductCard';
@@ -7,6 +7,7 @@ import {
   useGetCategories,
 } from '@workspace/api-client-react';
 import { SlidersHorizontal, X, ChevronDown, SearchX } from 'lucide-react';
+import { useBehaviorTracking } from '../hooks/useBehaviorTracking';
 
 const SORT_OPTIONS = [
   { value: 'relevance', label: 'Relevance' },
@@ -18,6 +19,7 @@ const SORT_OPTIONS = [
 
 export default function SearchResultsPage() {
   const searchString = useSearch();
+  const { trackSearch } = useBehaviorTracking();
   const params = useMemo(
     () => new URLSearchParams(searchString),
     [searchString],
@@ -39,6 +41,14 @@ export default function SearchResultsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: categories } = useGetCategories();
+
+  // Track search keywords for personalized recommendations
+  useEffect(() => {
+    if (queryFromUrl && queryFromUrl.trim()) {
+      trackSearch(queryFromUrl.trim(), categoryFromUrl || undefined);
+    }
+  }, [queryFromUrl, categoryFromUrl, trackSearch]);
+
 
   const searchParams = {
     q: queryFromUrl || undefined,

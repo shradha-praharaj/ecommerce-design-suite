@@ -9,6 +9,7 @@ import { PopularProductsAgent } from '../../popular-products-agent.js';
 import { ProductSearchAgent } from '../../product-search-agent.js';
 import { TopPicksAgent } from '../../top-picks-agent.js';
 import { UnknownAgent } from '../../unknown-agent.js';
+import { RecommendationExplanationAgent } from '../../recommendation-explanation-agent.js';
 import type { Agent } from '../../types.js';
 import type { ChatbotStateType, ChatbotStateUpdate } from '../state.js';
 
@@ -26,8 +27,10 @@ const agents: Record<string, Agent> = {
   bundle_advisor: new BundleAdvisorAgent(),
   gaming_build: new GamingBuildAdvisorAgent(),
   guided_advisor: new GuidedProductAdvisorAgent(),
+  recommendation_explanation: new RecommendationExplanationAgent(),
   unknown: new UnknownAgent(),
 };
+
 
 export async function specialistNode(
   state: ChatbotStateType,

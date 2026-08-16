@@ -10,6 +10,10 @@ import type { ConversationCheckpoint } from '../agents/types.js';
 import { compareProducts, recommendProduct } from '../agents/compare-agent.js';
 
 import { getAuthUserId } from '../lib/crypto.js';
+import {
+  trackUserBehaviorEvent,
+  saveUserConversationSignal,
+} from '../agents/user-preference-engine.js';
 
 export const aiRouter = Router();
 
@@ -144,6 +148,59 @@ aiRouter.post('/chat', async (req, res) => {
       });
       response.conversationId = memory.conversationId;
       response.checkpoint = checkpoint;
+
+      // Extract explicit preference signals
+      const lowerMsg = message.toLowerCase();
+      if (
+        lowerMsg.includes('i love ') ||
+        lowerMsg.includes('i prefer ') ||
+        lowerMsg.includes('my favorite ') ||
+        lowerMsg.includes('i loved ') ||
+        lowerMsg.includes('love to game') ||
+        lowerMsg.includes('huge fan of')
+      ) {
+        let matchedBrand: string | undefined;
+        let matchedCategory: string | undefined;
+
+        if (lowerMsg.includes('samsung')) matchedBrand = 'Samsung';
+        else if (lowerMsg.includes('apple') || lowerMsg.includes('iphone'))
+          matchedBrand = 'Apple';
+        else if (lowerMsg.includes('amd') || lowerMsg.includes('ryzen'))
+          matchedBrand = 'AMD';
+        else if (lowerMsg.includes('intel')) matchedBrand = 'Intel';
+        else if (lowerMsg.includes('nvidia') || lowerMsg.includes('rtx'))
+          matchedBrand = 'Nvidia';
+        else if (lowerMsg.includes('sony')) matchedBrand = 'Sony';
+        else if (lowerMsg.includes('asus') || lowerMsg.includes('rog'))
+          matchedBrand = 'Asus';
+
+        if (lowerMsg.includes('mobile') || lowerMsg.includes('phone'))
+          matchedCategory = 'Mobiles';
+        else if (lowerMsg.includes('laptop')) matchedCategory = 'Laptops';
+        else if (lowerMsg.includes('game') || lowerMsg.includes('gaming'))
+          matchedCategory = 'Gaming';
+        else if (lowerMsg.includes('headphone') || lowerMsg.includes('audio'))
+          matchedCategory = 'Audio';
+
+        void saveUserConversationSignal(
+          userId,
+          message.slice(0, 120),
+          matchedCategory,
+          matchedBrand,
+        );
+      }
+
+      // Track chatbot behavior event
+      void trackUserBehaviorEvent({
+        userId,
+        sessionId: `user_${userId}`,
+        eventType: 'chatbot_query',
+        keyword: message.slice(0, 60),
+        metadata: {
+          hasProducts: (response.products?.length ?? 0) > 0,
+          productCount: response.products?.length ?? 0,
+        },
+      });
     }
 
     return res.status(200).json(response);

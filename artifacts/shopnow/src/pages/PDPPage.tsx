@@ -33,6 +33,7 @@ import {
   onProductImageError,
   resolveProductImageSrc,
 } from '../lib/product-image';
+import { useBehaviorTracking } from '../hooks/useBehaviorTracking';
 
 export default function PDPPage() {
   const { id } = useParams();
@@ -40,6 +41,7 @@ export default function PDPPage() {
   const queryClient = useQueryClient();
   const addToCart = useAddToCart();
   const { isLoggedIn } = useUser();
+  const { trackView } = useBehaviorTracking();
   const [, navigate] = useLocation();
 
   const { data: product, isLoading: isProductLoading } = useGetProduct(
@@ -56,6 +58,13 @@ export default function PDPPage() {
     },
   );
 
+  // Track product view for recommendation engine
+  useEffect(() => {
+    if (product && product.id) {
+      trackView(product.id, product.category, product.brand);
+    }
+  }, [product?.id, product?.category, product?.brand, trackView]);
+
   // For anonymous: fetch accessories and trending items
   const { data: allProducts } = useListProducts();
   const trendingAccessories = (allProducts ?? [])
@@ -67,6 +76,7 @@ export default function PDPPage() {
 
   const [activeColor, setActiveColor] = useState('Silver');
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+
 
   if (isProductLoading || !product) {
     return (

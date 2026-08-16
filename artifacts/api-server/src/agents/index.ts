@@ -10,6 +10,8 @@ export {
   ConversationMemoryAgent,
   conversationMemoryAgent,
 } from './conversation-memory-agent.js';
+export { RecommendationExplanationAgent } from './recommendation-explanation-agent.js';
+
 export {
   ChatbotState,
   buildChatGraph,

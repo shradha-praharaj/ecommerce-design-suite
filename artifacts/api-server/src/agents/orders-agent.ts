@@ -1,3 +1,5 @@
+import { db, ordersTable, orderItemsTable, productsTable } from '@workspace/db';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import type {
   Agent,
   AgentContext,
@@ -22,6 +24,99 @@ function isReturnIntent(message: string): boolean {
   );
 }
 
+interface OrderSummary {
+  id: number;
+  totalAmount: string;
+  status: string;
+  createdAt: string;
+  address: unknown;
+  products: string[];
+}
+
+type OrderRow = {
+  id: number;
+  totalAmount: string;
+  status: string;
+  createdAt: Date;
+  shippingAddress: unknown;
+};
+
+async function attachProductNames(rows: OrderRow[]): Promise<OrderSummary[]> {
+  if (rows.length === 0) return [];
+
+  const items = await db
+    .select({
+      orderId: orderItemsTable.orderId,
+      productName: productsTable.name,
+    })
+    .from(orderItemsTable)
+    .innerJoin(productsTable, eq(productsTable.id, orderItemsTable.productId))
+    .where(
+      inArray(
+        orderItemsTable.orderId,
+        rows.map((row) => row.id),
+      ),
+    );
+
+  const productsByOrder = new Map<number, string[]>();
+  for (const item of items) {
+    const names = productsByOrder.get(item.orderId) ?? [];
+    names.push(item.productName);
+    productsByOrder.set(item.orderId, names);
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    totalAmount: row.totalAmount,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    address: row.shippingAddress,
+    products: productsByOrder.get(row.id) ?? ['Purchased items'],
+  }));
+}
+
+// Order history is an explicit user request, so it is read directly rather than
+// from the personalization-gated user context.
+async function loadOrdersForUser(
+  userId: number,
+  limit = 10,
+): Promise<OrderSummary[]> {
+  const rows = await db
+    .select({
+      id: ordersTable.id,
+      totalAmount: ordersTable.totalAmount,
+      status: ordersTable.status,
+      createdAt: ordersTable.createdAt,
+      shippingAddress: ordersTable.shippingAddress,
+    })
+    .from(ordersTable)
+    .where(eq(ordersTable.userId, userId))
+    .orderBy(desc(ordersTable.createdAt))
+    .limit(limit);
+
+  return attachProductNames(rows);
+}
+
+async function loadOrderForUser(
+  userId: number,
+  orderId: number,
+): Promise<OrderSummary | null> {
+  const rows = await db
+    .select({
+      id: ordersTable.id,
+      totalAmount: ordersTable.totalAmount,
+      status: ordersTable.status,
+      createdAt: ordersTable.createdAt,
+      shippingAddress: ordersTable.shippingAddress,
+    })
+    .from(ordersTable)
+    .where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId)))
+    .limit(1);
+
+  const [order] = await attachProductNames(rows);
+  return order ?? null;
+}
+
 export class OrdersAgent implements Agent {
   name = 'OrdersAgent';
 
@@ -42,10 +137,11 @@ export class OrdersAgent implements Agent {
     }
 
     const name = userContext.name ? `, ${userContext.name}` : '';
+    const orders = await loadOrdersForUser(userId);
 
     // ── Return / Refund / Exchange request ─────────────────────────────────
     if (isReturnIntent(message) || parsed.reply === 'return') {
-      if (!userContext.recentOrders?.length) {
+      if (!orders.length) {
         return {
           reply:
             `🔄 **Returns & Refunds${name}**\n\n` +
@@ -61,7 +157,7 @@ export class OrdersAgent implements Agent {
         };
       }
 
-      const eligibleOrders = userContext.recentOrders.filter(
+      const eligibleOrders = orders.filter(
         (o) => o.status === 'Delivered' || o.status === 'delivered',
       );
 
@@ -82,11 +178,15 @@ export class OrdersAgent implements Agent {
       return {
         reply,
         products: [],
-        orders: userContext.recentOrders,
-        followUp: ['Show all my orders', 'Track my delivery', 'Browse new products'],
+        orders,
+        followUp: [
+          'Show all my orders',
+          'Track my delivery',
+          'Browse new products',
+        ],
         userContext: {
           name: userContext.name,
-          recentOrderCount: userContext.recentOrders.length,
+          recentOrderCount: orders.length,
           interests: userContext.interests,
         },
       };
@@ -95,9 +195,7 @@ export class OrdersAgent implements Agent {
     // ── Specific Order ID tracking ──────────────────────────────────────────
     const specificOrderId = extractOrderId(message);
     if (specificOrderId) {
-      const found = userContext.recentOrders?.find(
-        (o) => o.id === specificOrderId,
-      );
+      const found = await loadOrderForUser(userId, specificOrderId);
       if (found) {
         return {
           reply:
@@ -115,7 +213,7 @@ export class OrdersAgent implements Agent {
           ],
           userContext: {
             name: userContext.name,
-            recentOrderCount: userContext.recentOrders?.length ?? 0,
+            recentOrderCount: orders.length,
             interests: userContext.interests,
           },
         };
@@ -125,11 +223,11 @@ export class OrdersAgent implements Agent {
             `⚠️ I couldn't find **Order #${specificOrderId}** in your account${name}.\n\n` +
             `It may belong to a different account, or the order number may be incorrect. Here are your recent orders instead:`,
           products: [],
-          orders: userContext.recentOrders ?? [],
+          orders,
           followUp: ['Show all my orders', 'Help me find a product'],
           userContext: {
             name: userContext.name,
-            recentOrderCount: userContext.recentOrders?.length ?? 0,
+            recentOrderCount: orders.length,
             interests: userContext.interests,
           },
         };
@@ -137,8 +235,8 @@ export class OrdersAgent implements Agent {
     }
 
     // ── General order history ───────────────────────────────────────────────
-    const orderSummary = userContext.recentOrders?.length
-      ? userContext.recentOrders
+    const orderSummary = orders.length
+      ? orders
           .map(
             (o) =>
               `• **Order #${o.id}**: ${o.products.join(', ')} — ₹${o.totalAmount} *(${o.status})*`,
@@ -146,21 +244,21 @@ export class OrdersAgent implements Agent {
           .join('\n')
       : `You haven't placed any orders yet${name}. Browse our collection and find something you love! 🛍️`;
 
-    const reply = userContext.recentOrders?.length
+    const reply = orders.length
       ? `📦 Here are your recent orders${name}:\n\n${orderSummary}\n\n_Click any order for full details & invoice._`
       : orderSummary;
 
     return {
       reply,
       products: [],
-      orders: userContext.recentOrders ?? [],
-      followUp: userContext.recentOrders?.length
+      orders,
+      followUp: orders.length
         ? ['Track delivery status', 'Request a return', 'Continue shopping']
         : ['Show trending products', 'Help me pick a mobile'],
       userContext: userId
         ? {
             name: userContext.name,
-            recentOrderCount: userContext.recentOrders?.length ?? 0,
+            recentOrderCount: orders.length,
             interests: userContext.interests,
           }
         : null,

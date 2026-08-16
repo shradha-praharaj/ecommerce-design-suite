@@ -1,3 +1,23 @@
+export interface UserPreferenceProfileSummary {
+  topCategories: string[];
+  topBrands: string[];
+  useCases: string[];
+  priceRange: { min: number; max: number } | null;
+  personaHint: string | null;
+  giftBuyerScore: number;
+  conversationSignals: string[];
+}
+
+export interface IncompleteSessionSummary {
+  goal: string;
+  activeAgent: string;
+  category?: string | null;
+  answers: Record<string, string | number | boolean | null>;
+  budgetMax?: number | null;
+  nextQuestion?: string | null;
+  summaryText: string;
+}
+
 export interface UserContext {
   name?: string;
   recentOrders?: Array<{
@@ -12,6 +32,8 @@ export interface UserContext {
   interests?: string[];
   purchasedProductIds?: number[];
   purchasedBrands?: string[];
+  preferenceProfile?: UserPreferenceProfileSummary;
+  incompleteCheckpoint?: IncompleteSessionSummary;
 }
 
 export interface AgentContext {

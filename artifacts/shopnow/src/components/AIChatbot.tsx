@@ -101,6 +101,47 @@ function removeProductMarkdownLinks(content: string): string {
   return content.replace(PRODUCT_MARKDOWN_LINK, '').trim();
 }
 
+function getProductSpecSummary(product: any): string {
+  if (!product.specs) return product.brand ? `Brand: ${product.brand}` : '';
+  try {
+    const parsed =
+      typeof product.specs === 'string'
+        ? JSON.parse(product.specs)
+        : product.specs;
+    if (typeof parsed === 'object' && parsed !== null) {
+      const keys = [
+        'processor',
+        'cpu',
+        'ram',
+        'memory',
+        'storage',
+        'graphics',
+        'gpu',
+        'display',
+        'screen',
+        'camera',
+        'battery',
+      ];
+      const found: string[] = [];
+      for (const k of keys) {
+        const matchingKey = Object.keys(parsed).find((pk) =>
+          pk.toLowerCase().includes(k),
+        );
+        if (matchingKey && parsed[matchingKey]) {
+          found.push(String(parsed[matchingKey]));
+          if (found.length >= 2) break;
+        }
+      }
+      if (found.length > 0) return found.join(' • ');
+      const entries = Object.entries(parsed)
+        .slice(0, 2)
+        .map(([, v]) => String(v));
+      return entries.join(' • ');
+    }
+  } catch {}
+  return product.brand ? `Brand: ${product.brand}` : '';
+}
+
 function createClientMessageId(): string {
   return typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -1209,103 +1250,146 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                         )}
 
                         {msg.products && msg.products.length > 0 && (
-                          <div className="ml-9 w-[calc(100%-2.25rem)] space-y-2">
+                          <div className="ml-9 w-[calc(100%-2.25rem)] space-y-3 my-2">
                             {msg.products.map((p: any) => {
                               const isInCompare = compareProducts.some(
                                 (cp) => cp.id === p.id,
                               );
                               const canAdd = compareProducts.length < 3;
+                              const isSelected = selectedCartProducts.some(
+                                (item) => item.id === p.id,
+                              );
+                              const ratingNum = parseFloat(p.rating || '4.2');
+                              const specsSummary = getProductSpecSummary(p);
+                              const origPrice = p.originalPrice ? parseFloat(p.originalPrice) : null;
+                              const currPrice = parseFloat(p.price || '0');
+
                               return (
                                 <div
                                   key={p.id}
-                                  className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 p-2 rounded-lg flex items-center gap-2 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+                                  className="group bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-indigo-400 dark:hover:border-indigo-600 p-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
                                 >
-                                  {/* Compare checkbox */}
-                                  <button
-                                    onClick={() => handleToggleCompare(p)}
-                                    disabled={!isInCompare && !canAdd}
-                                    className={`shrink-0 w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${
-                                      isInCompare
-                                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                                        : canAdd
-                                          ? 'border-neutral-300 dark:border-neutral-600 hover:border-indigo-400'
-                                          : 'border-neutral-200 dark:border-neutral-700 opacity-40 cursor-not-allowed'
-                                    }`}
-                                    title={
-                                      isInCompare
-                                        ? 'Remove from compare'
-                                        : canAdd
-                                          ? 'Add to compare (max 3)'
-                                          : 'Max 3 products'
-                                    }
-                                  >
-                                    {isInCompare && <Check size={12} />}
-                                  </button>
-                                  <Link
-                                    href={`/product/${p.id}`}
-                                    onClick={() => setIsOpen(false)}
-                                    className="w-10 h-10 bg-neutral-100 dark:bg-neutral-900 rounded-md flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-indigo-400 transition-all"
-                                  >
-                                    <img
-                                      src={resolveProductImageSrc(
-                                        p.imageUrl,
-                                        p.name,
-                                      )}
-                                      alt={p.name}
-                                      className="w-10 h-10 object-cover rounded-md"
-                                      onError={(e) =>
-                                        onProductImageError(e, p.name)
-                                      }
-                                    />
-                                  </Link>
-                                  <Link
-                                    href={`/product/${p.id}`}
-                                    onClick={() => setIsOpen(false)}
-                                    className="flex-1 min-w-0 cursor-pointer"
-                                  >
-                                    <div className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                      {p.name}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                        ₹
-                                        {Math.round(
-                                          parseFloat(p.price),
-                                        ).toLocaleString()}
-                                      </span>
+                                  <div className="flex gap-3">
+                                    {/* Product Image */}
+                                    <Link
+                                      href={`/product/${p.id}`}
+                                      onClick={() => setIsOpen(false)}
+                                      className="relative w-20 h-20 sm:w-24 sm:h-24 bg-neutral-100 dark:bg-neutral-900 rounded-xl overflow-hidden shrink-0 border border-neutral-100 dark:border-neutral-700/60 group-hover:ring-2 group-hover:ring-indigo-500/20 transition-all flex items-center justify-center"
+                                    >
+                                      <img
+                                        src={resolveProductImageSrc(
+                                          p.imageUrl,
+                                          p.name,
+                                        )}
+                                        alt={p.name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        onError={(e) =>
+                                          onProductImageError(e, p.name)
+                                        }
+                                      />
                                       {p.discountPct > 0 && (
-                                        <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
-                                          {p.discountPct}% off
+                                        <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-sm">
+                                          {p.discountPct}% OFF
                                         </span>
                                       )}
+                                    </Link>
+
+                                    {/* Product Details */}
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                      <div>
+                                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                                          {p.brand && (
+                                            <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-600 dark:text-indigo-400">
+                                              {p.brand}
+                                            </span>
+                                          )}
+                                          <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                                            <Star size={11} className="fill-amber-400 text-amber-400" />
+                                            <span>{ratingNum.toFixed(1)}</span>
+                                            {p.reviewCount > 0 && (
+                                              <span className="text-[10px] text-neutral-400 font-normal">
+                                                ({p.reviewCount})
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <Link
+                                          href={`/product/${p.id}`}
+                                          onClick={() => setIsOpen(false)}
+                                          className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors leading-snug"
+                                        >
+                                          {p.name}
+                                        </Link>
+
+                                        {specsSummary && (
+                                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-1 font-normal">
+                                            {specsSummary}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Price Section */}
+                                      <div className="flex items-baseline gap-2 mt-1.5">
+                                        <span className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 flex items-center">
+                                          <IndianRupee size={12} />
+                                          {Math.round(currPrice).toLocaleString('en-IN')}
+                                        </span>
+                                        {origPrice && origPrice > currPrice && (
+                                          <span className="text-[11px] text-neutral-400 line-through">
+                                            ₹{Math.round(origPrice).toLocaleString('en-IN')}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                  </Link>
-                                  <button
-                                    onClick={() => handleToggleCartSelection(p)}
-                                    disabled={addToCart.isPending}
-                                    className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-md transition-colors ${
-                                      selectedCartProducts.some(
-                                        (item) => item.id === p.id,
-                                      )
-                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                                        : 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/30'
-                                    }`}
-                                    title={
-                                      selectedCartProducts.some(
-                                        (item) => item.id === p.id,
-                                      )
-                                        ? 'Selected for cart'
-                                        : 'Add to Cart'
-                                    }
-                                  >
-                                    {selectedCartProducts.some(
-                                      (item) => item.id === p.id,
-                                    ) ? (
-                                      <Check size={14} />
-                                    ) : (
-                                      <ShoppingCart size={14} />
-                                    )}
-                                  </button>
+                                  </div>
+
+                                  {/* Action Bar */}
+                                  <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-neutral-100 dark:border-neutral-700/60">
+                                    <button
+                                      onClick={() => handleToggleCompare(p)}
+                                      disabled={!isInCompare && !canAdd}
+                                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                                        isInCompare
+                                          ? 'bg-indigo-600 text-white shadow-sm'
+                                          : canAdd
+                                            ? 'bg-neutral-100 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                                            : 'opacity-40 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800 text-neutral-400'
+                                      }`}
+                                      title={
+                                        isInCompare
+                                          ? 'Remove from compare'
+                                          : canAdd
+                                            ? 'Add to compare'
+                                            : 'Max 3 products reached'
+                                      }
+                                    >
+                                      <GitCompareArrows size={12} />
+                                      <span>{isInCompare ? 'Comparing' : 'Compare'}</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleToggleCartSelection(p)}
+                                      disabled={addToCart.isPending}
+                                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                                        isSelected
+                                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 active:scale-[0.98]'
+                                      }`}
+                                    >
+                                      {isSelected ? (
+                                        <>
+                                          <Check size={13} />
+                                          <span>Selected for Cart</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ShoppingCart size={13} />
+                                          <span>Add to Cart</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
                               );
                             })}
@@ -1314,26 +1398,24 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
 
                         {selectedCartProducts.length > 0 &&
                           i === messages.length - 1 && (
-                            <div className="ml-9 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-900/20">
-                              <span className="min-w-0 flex-1 text-[11px] text-emerald-800 dark:text-emerald-200">
-                                {selectedCartProducts.length} item
-                                {selectedCartProducts.length === 1
-                                  ? ''
-                                  : 's'}{' '}
-                                selected. Add them and clear this search?
+                            <div className="ml-9 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800/60 dark:bg-emerald-950/40 shadow-sm">
+                              <span className="min-w-0 flex-1 text-xs font-medium text-emerald-900 dark:text-emerald-200">
+                                ✨ {selectedCartProducts.length} product
+                                {selectedCartProducts.length === 1 ? '' : 's'}{' '}
+                                selected.
                               </span>
                               <button
                                 onClick={handleAddSelectedToCart}
                                 disabled={addToCart.isPending}
-                                className="min-h-8 rounded-md bg-emerald-600 px-2.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                className="h-8 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 shadow-sm transition-all"
                               >
                                 {addToCart.isPending
                                   ? 'Adding…'
-                                  : 'Add selected & view cart'}
+                                  : 'Add & View Cart'}
                               </button>
                               <button
                                 onClick={() => setSelectedCartProducts([])}
-                                className="min-h-8 px-1.5 text-[11px] font-medium text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100"
+                                className="h-8 px-2 text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
                               >
                                 Clear
                               </button>
@@ -1344,17 +1426,26 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                         {msg.followUp &&
                           msg.followUp.length > 0 &&
                           i === messages.length - 1 && (
-                            <div className="ml-9 flex flex-wrap gap-1.5 mt-1">
-                              {msg.followUp.map((suggestion, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => handleQuickAction(suggestion)}
-                                  disabled={chatMutation.isPending}
-                                  className="px-2.5 py-2 min-h-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors border border-indigo-100 dark:border-indigo-800/50 disabled:opacity-50"
-                                >
-                                  {suggestion}
-                                </button>
-                              ))}
+                            <div className="ml-9 flex flex-wrap gap-2 mt-2">
+                              {msg.followUp.map((suggestion, idx) => {
+                                const isContinueChip =
+                                  suggestion.toLowerCase().includes('continue') ||
+                                  suggestion.toLowerCase().includes('left off');
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => handleQuickAction(suggestion)}
+                                    disabled={chatMutation.isPending}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 disabled:opacity-50 ${
+                                      isContinueChip
+                                        ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/30 border border-indigo-400/40 scale-105 animate-pulse'
+                                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800/60'
+                                    }`}
+                                  >
+                                    {suggestion}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                       </motion.div>

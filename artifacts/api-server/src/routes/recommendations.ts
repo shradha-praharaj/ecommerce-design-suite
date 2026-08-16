@@ -1,9 +1,10 @@
-import { Router } from "express";
-import { ne, eq } from "drizzle-orm";
-import { db, productsTable, usersTable } from '@workspace/db';
-import { GetPdpRecommendationsParams } from "@workspace/api-zod";
+import { Router } from 'express';
+import { ne, eq, inArray, desc } from 'drizzle-orm';
+import { db, productsTable, usersTable, cartItemsTable } from '@workspace/db';
+import { GetPdpRecommendationsParams } from '@workspace/api-zod';
 import { cacheMiddleware } from '../middlewares/cache.js';
 import { getAuthUserId } from '../lib/crypto.js';
+import { loadUserPreferenceProfile } from '../agents/user-preference-engine.js';
 
 const THREE_MIN = 3 * 60 * 1000;
 
@@ -33,11 +34,11 @@ function formatProduct(r: typeof productsTable.$inferSelect) {
 }
 
 function makeWidget(
-  type: "content_based" | "collaborative" | "hybrid",
+  type: 'content_based' | 'collaborative' | 'hybrid',
   title: string,
   subtitle: string,
-  products: typeof productsTable.$inferSelect[],
-  reasons: string[]
+  products: (typeof productsTable.$inferSelect)[],
+  reasons: string[],
 ) {
   return {
     type,
@@ -45,177 +46,249 @@ function makeWidget(
     subtitle,
     products: products.map((p, i) => ({
       product: formatProduct(p),
-      reason: reasons[i] ?? "Recommended for you",
+      reason: reasons[i] ?? `Top recommended ${p.category || 'product'} for you`,
     })),
   };
 }
 
-// Homepage recs: dynamic per-user session
-router.get("/recommendations/homepage", async (req, res): Promise<void> => {
+// Homepage recs: dynamic per-user session and preference profile
+router.get('/recommendations/homepage', async (req, res): Promise<void> => {
+  const userId = getAuthUserId(req);
   const firstName = await getFirstName(req);
-  const allProducts = await db.select().from(productsTable).limit(50);
+  const profile = userId ? await loadUserPreferenceProfile(userId) : null;
 
-  const laptopsAndAccessories = allProducts.filter((p) =>
-    ["Laptops", "Accessories", "Gaming"].includes(p.category) || p.department === "Gaming"
+  const allProducts = await db
+    .select()
+    .from(productsTable)
+    .orderBy(desc(productsTable.rating))
+    .limit(80);
+
+  const topCategories = (profile?.topCategories as string[]) || [];
+  const topBrands = (profile?.topBrands as string[]) || [];
+
+  // Content-Based Widget: products matching user's top categories
+  let contentProducts = allProducts.filter((p) =>
+    topCategories.length > 0
+      ? topCategories.includes(p.category) ||
+        (topCategories.includes('Gaming') && p.department === 'Gaming')
+      : ['Laptops', 'Gaming', 'Mobiles'].includes(p.category),
   );
-  const trending = allProducts.filter((p) =>
-    ["Mobiles", "Audio", "Accessories"].includes(p.category)
-  );
-  const hybrid = allProducts.filter((p) => p.isFeatured || Number(p.rating) >= 4.5);
+  if (contentProducts.length < 4) {
+    contentProducts = allProducts;
+  }
+
+  // Collaborative Widget: trending top-sellers & highly-rated items
+  const collaborativeProducts = allProducts
+    .filter((p) => p.isFeatured || p.isDeal || Number(p.rating) >= 4.4)
+    .slice(0, 8);
+
+  // Hybrid AI Preferences Widget: matching preferred brands & use case
+  let hybridProducts = allProducts.filter((p) => {
+    if (topBrands.length > 0 && topBrands.includes(p.brand)) return true;
+    if (topCategories.length > 0 && topCategories.includes(p.category)) return true;
+    return p.isFeatured || Number(p.rating) >= 4.6;
+  });
+  if (hybridProducts.length < 4) {
+    hybridProducts = allProducts.filter((p) => p.isFeatured || Number(p.rating) >= 4.5);
+  }
+
+  const preferredCategoryName = topCategories[0] || 'Tech';
+  const preferredBrandName = topBrands[0] || '';
 
   res.json({
     contentBased: makeWidget(
       'content_based',
-      'Based on Your Tech Interests',
-      'Personalized electronics matching your browsing history',
-      (laptopsAndAccessories.length >= 4 ? laptopsAndAccessories : allProducts).slice(0, 6),
-      [
-        'Similar to your browsing',
-        'Matches your tech stack',
-        'Frequently viewed together',
-        'Accessory match',
-        'Top choice for you',
-        'Recommended based on history',
-      ],
+      profile && topCategories.length > 0
+        ? `Based on Your Interest in ${preferredCategoryName}`
+        : 'Based on Your Tech Interests',
+      profile && topCategories.length > 0
+        ? `Personalized picks tailored to your ${preferredCategoryName.toLowerCase()} browsing & preferences`
+        : 'Personalized electronics matching your browsing history',
+      contentProducts.slice(0, 6),
+      contentProducts.slice(0, 6).map((p) =>
+        topBrands.includes(p.brand)
+          ? `Matches your favorite brand ${p.brand}`
+          : `Top rated in ${p.category}`,
+      ),
     ),
     collaborative: makeWidget(
       'collaborative',
       'Trending Among Similar Shoppers',
-      'What tech enthusiasts like you are buying this week',
-      (trending.length >= 4 ? trending : allProducts).slice(0, 6),
-      [
-        'Trending in your segment',
-        'Popular this week',
-        'High demand product',
-        'People like you bought this',
-        'Top seller this month',
-        'Highly rated by buyers',
-      ],
+      'What tech enthusiasts with similar taste are buying this week',
+      collaborativeProducts.slice(0, 6),
+      collaborativeProducts.slice(0, 6).map((p) =>
+        p.isDeal
+          ? '🔥 Trending deal this week'
+          : p.isFeatured
+            ? '⭐ High-demand bestseller'
+            : 'Popular among verified buyers',
+      ),
     ),
     hybrid: makeWidget(
       'hybrid',
       `${firstName}'s Personal AI Preferences`,
-      'Curated mix of top AI recommendations tailored for you',
-      (hybrid.length >= 4 ? hybrid : allProducts).slice(0, 6),
-      [
-        'Editorial pick + your history',
-        'Trending + personalized for you',
-        'Top rated for your profile',
-        `Curated specifically for ${firstName}`,
-        'Matches your saved preferences',
-        'Top AI recommendation',
-      ],
+      preferredBrandName
+        ? `Curated blend of ${preferredBrandName} and top-rated gear selected for you`
+        : 'Curated mix of top AI recommendations tailored for you',
+      hybridProducts.slice(0, 6),
+      hybridProducts.slice(0, 6).map((p) =>
+        topBrands.includes(p.brand)
+          ? `Matches your saved ${p.brand} preference`
+          : profile?.personaHint === 'gamer' && (p.category === 'Gaming' || p.department === 'Gaming')
+            ? 'Optimized for high-FPS gaming'
+            : `Top AI pick for ${firstName}`,
+      ),
     ),
   });
 });
 
 // PDP recs: cache 3 min per product
-router.get("/recommendations/pdp/:productId", cacheMiddleware(THREE_MIN), async (req, res): Promise<void> => {
-  const firstName = await getFirstName(req);
-  const rawId = Array.isArray(req.params.productId)
-    ? req.params.productId[0]
-    : req.params.productId;
-  const parsed = GetPdpRecommendationsParams.safeParse({
-    productId: parseInt(rawId, 10),
-  });
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+router.get(
+  '/recommendations/pdp/:productId',
+  cacheMiddleware(THREE_MIN),
+  async (req, res): Promise<void> => {
+    const userId = getAuthUserId(req);
+    const firstName = await getFirstName(req);
+    const profile = userId ? await loadUserPreferenceProfile(userId) : null;
+    const topBrands = (profile?.topBrands as string[]) || [];
 
-  const allProducts = await db
-    .select()
-    .from(productsTable)
-    .where(ne(productsTable.id, parsed.data.productId))
-    .limit(20);
+    const rawId = Array.isArray(req.params.productId)
+      ? req.params.productId[0]
+      : req.params.productId;
+    const parsed = GetPdpRecommendationsParams.safeParse({
+      productId: parseInt(rawId, 10),
+    });
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  const accessories = allProducts.filter((p) =>
-    ["Accessories", "Audio"].includes(p.category)
-  );
-  const similar = allProducts.filter((p) => p.category === "Laptops");
-  const featured = allProducts.filter((p) => p.isFeatured);
+    const [currentProduct] = await db
+      .select()
+      .from(productsTable)
+      .where(eq(productsTable.id, parsed.data.productId))
+      .limit(1);
 
-  res.json({
-    frequentlyBoughtTogether: makeWidget(
-      'collaborative',
-      'Frequently Bought Together',
-      'Customers who bought this also bought',
-      accessories.slice(0, 3),
-      [
-        'Often bought together',
-        'Popular add-on',
-        'Frequently paired with this',
-      ],
-    ),
-    contentBased: makeWidget(
-      'content_based',
-      'Complete Your Setup',
-      "Accessories matching this product's specs and color",
-      accessories.slice(0, 4),
-      [
-        'USB-C compatible',
-        'Color matched',
-        'Spec compatible',
-        'Frequently used together',
-      ],
-    ),
-    hybrid: makeWidget(
-      'hybrid',
-      `${firstName}'s AI Bundle Suggestion`,
-      "Upgrading for work? Here's your kit",
-      featured.slice(0, 3),
-      [
-        'Editorial pick + your history',
-        'Trending + your preferences',
-        'Curated for your work style',
-      ],
-    ),
-  });
-});
+    const allProducts = await db
+      .select()
+      .from(productsTable)
+      .where(ne(productsTable.id, parsed.data.productId))
+      .limit(40);
+
+    const currentCat = currentProduct?.category || '';
+    const currentBrand = currentProduct?.brand || '';
+
+    // Complementary accessories / add-ons
+    const accessories = allProducts.filter((p) =>
+      ['Accessories', 'Audio', 'Gaming'].includes(p.category),
+    );
+
+    // Similar alternatives in same category
+    const similar = allProducts.filter((p) => p.category === currentCat);
+
+    // AI bundles tailored to user
+    const brandMatches = allProducts.filter((p) =>
+      topBrands.includes(p.brand) || p.brand === currentBrand,
+    );
+    const bundleCandidates = brandMatches.length >= 3 ? brandMatches : allProducts.filter((p) => p.isFeatured);
+
+    res.json({
+      frequentlyBoughtTogether: makeWidget(
+        'collaborative',
+        'Frequently Bought Together',
+        'Customers who bought this also bought',
+        accessories.slice(0, 3),
+        [
+          'Often bought together with this item',
+          'Popular accessory pair',
+          'Frequently combined in customer orders',
+        ],
+      ),
+      contentBased: makeWidget(
+        'content_based',
+        'Complete Your Setup',
+        `Matching accessories and peripherals for ${currentProduct ? currentProduct.name : 'this item'}`,
+        (accessories.length >= 3 ? accessories : allProducts).slice(0, 4),
+        [
+          'Plug & play compatible',
+          'Color & spec matched',
+          'Recommended accessory',
+          'Popular companion product',
+        ],
+      ),
+      hybrid: makeWidget(
+        'hybrid',
+        `${firstName}'s AI Bundle Suggestion`,
+        `Curated gear to upgrade your setup`,
+        bundleCandidates.slice(0, 3),
+        [
+          `Matches your preference profile`,
+          'Complementary high-performance pick',
+          'Curated specifically for you',
+        ],
+      ),
+    });
+  },
+);
 
 // Cart recs: cache 3 min
-router.get("/recommendations/cart", cacheMiddleware(THREE_MIN), async (req, res): Promise<void> => {
-  const firstName = await getFirstName(req);
-  const allProducts = await db.select().from(productsTable).limit(20);
+router.get(
+  '/recommendations/cart',
+  cacheMiddleware(THREE_MIN),
+  async (req, res): Promise<void> => {
+    const userId = getAuthUserId(req);
+    const firstName = await getFirstName(req);
+    const profile = userId ? await loadUserPreferenceProfile(userId) : null;
+    const topBrands = (profile?.topBrands as string[]) || [];
 
-  const crossSell = allProducts.filter((p) =>
-    ["Accessories", "Audio"].includes(p.category)
-  );
-  const collaborative = allProducts.filter((p) => p.category === "Accessories");
-  const hybrid = allProducts.filter((p) => p.isFeatured);
+    const allProducts = await db.select().from(productsTable).limit(30);
 
-  res.json({
-    crossSell: makeWidget(
-      'content_based',
-      'Complete Your Setup',
-      'You might also need these with your cart',
-      crossSell.slice(0, 4),
-      [
-        'Pairs with Dell XPS 15',
-        'Compatible accessory',
-        'Great with your laptop',
-        'Often added to similar carts',
-      ],
-    ),
-    collaborative: makeWidget(
-      'collaborative',
-      'Frequently Bought Together',
-      'Shoppers with a similar cart also bought these',
-      collaborative.slice(0, 3),
-      [
-        'Trending in your segment',
-        'Popular with similar carts',
-        'Limited stock — popular item',
-      ],
-    ),
-    hybrid: makeWidget(
-      'hybrid',
-      `${firstName}'s Personal AI Picks`,
-      'Based on your browsing and purchase history',
-      hybrid.slice(0, 3),
-      ['You viewed this', 'Trending in your segment', 'Editorial pick'],
-    ),
-  });
-});
+    const crossSell = allProducts.filter((p) =>
+      ['Accessories', 'Audio'].includes(p.category),
+    );
+    const collaborative = allProducts.filter((p) => p.category === 'Accessories');
+    const hybrid = allProducts.filter(
+      (p) => topBrands.includes(p.brand) || p.isFeatured,
+    );
+
+    res.json({
+      crossSell: makeWidget(
+        'content_based',
+        'Complete Your Setup',
+        'Essential add-ons you might need with your cart',
+        crossSell.slice(0, 4),
+        [
+          'Compatible accessory',
+          'Great add-on for your items',
+          'Frequently added to similar carts',
+          'Special companion discount available',
+        ],
+      ),
+      collaborative: makeWidget(
+        'collaborative',
+        'Frequently Bought Together',
+        'Shoppers with a similar cart also bought these',
+        collaborative.slice(0, 3),
+        [
+          'Trending in your segment',
+          'Popular with similar carts',
+          'High demand accessory',
+        ],
+      ),
+      hybrid: makeWidget(
+        'hybrid',
+        `${firstName}'s Personal AI Picks`,
+        'Based on your browsing and purchase history',
+        hybrid.slice(0, 3),
+        [
+          'Matches your favorite brand',
+          'Curated based on your interests',
+          'Top AI recommendation',
+        ],
+      ),
+    });
+  },
+);
 
 export default router;
+

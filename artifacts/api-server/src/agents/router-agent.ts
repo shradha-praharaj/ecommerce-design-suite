@@ -131,6 +131,30 @@ function localFallbackParse(
     return { isGreeting: false, intent: 'gaming_build', reply: '' };
   }
 
+  // ── Recommendation Explanation intent fast-path ─────────────────────────
+  if (
+    /\b(why did you|why are you|why would you|how did you|how do you|why this|why suggest|why recommend|explain your|explain this|based on what|why for me)\b/i.test(
+      lower,
+    ) &&
+    (lower.includes('suggest') ||
+      lower.includes('recommend') ||
+      lower.includes('pick') ||
+      lower.includes('choose') ||
+      lower.includes('show') ||
+      lower.includes('build') ||
+      lower.includes('product') ||
+      lower.includes('for me') ||
+      lower.includes('this'))
+  ) {
+    return {
+      isGreeting: false,
+      intent: 'recommendation_explanation',
+      reply: '',
+    };
+  }
+
+
+
   if (
     /\b(?:alternatives?|other options|something else)\b|\bdon'?t like (?:this|that)\b/i.test(
       lower,
@@ -719,9 +743,11 @@ async function classifyIntent(
 ${historyContext}
 User message: "${message}"
 
-Analyze intent: greeting, orders, address, product_search, bundle_advisor, top_picks, popular_products, add_to_cart, gaming_build, compare, or unknown.
+Analyze intent: greeting, orders, address, product_search, bundle_advisor, top_picks, popular_products, add_to_cart, gaming_build, compare, recommendation_explanation, or unknown.
+- For recommendation_explanation: when user asks "why did you suggest this?", "why this product?", "why are you recommending this?", "how did you pick this for me?", "explain your recommendation".
 - For greetings: write a warm personalised welcome using their name if available, mention their interests.
 - For orders: summarise their recent order history. If user mentions return/refund/exchange, still classify as orders.
+
 - For address: show/confirm their last shipping address.
 - For add_to_cart: ONLY when user explicitly says "add to cart". NOT when they say "I want to buy X" (that's product_search).
 - For popular_products: when user asks about "what's popular", "trending", "bestsellers", "most reviewed", "deals", "flash sale", "offers", "on sale" in a general sense.

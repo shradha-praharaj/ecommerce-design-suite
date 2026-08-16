@@ -37,6 +37,12 @@ export const ordersTable = pgTable('orders', {
   /** Full snapshot of coupon at checkout time for audit / display */
   couponSnapshot: jsonb('coupon_snapshot'),
   status: text('status').notNull().default('Processing'),
+  paymentGateway: text('payment_gateway').notNull().default('cod'),
+  razorpayOrderId: text('razorpay_order_id'),
+  razorpayPaymentId: text('razorpay_payment_id'),
+  razorpaySignature: text('razorpay_signature'),
+  paymentStatus: text('payment_status').notNull().default('pending'),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
   shippingAddress: jsonb('shipping_address').notNull(),
   paymentDetails: jsonb('payment_details').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })

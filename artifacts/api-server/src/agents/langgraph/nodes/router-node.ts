@@ -23,19 +23,23 @@ export async function routerNode(
     await router.classifyIntent(ctx),
   );
 
-  // Checkpoint-aware: if router returns unknown or empty intent, but checkpoint has an active advisor agent, preserve it
+  // Checkpoint-aware: if checkpoint has an active advisor agent and user didn't initiate a new search keyword
   if (
-    (!parsed.intent || parsed.intent === 'unknown') &&
-    (state.checkpoint?.activeAgent === 'gaming_build' ||
-      state.checkpoint?.activeAgent === 'guided_advisor')
+    state.checkpoint?.activeAgent &&
+    ['gaming_build', 'guided_advisor'].includes(state.checkpoint.activeAgent) &&
+    (parsed.intent === 'unknown' ||
+      !parsed.intent ||
+      (parsed.intent === 'product_search' && !parsed.keyword))
   ) {
     parsed.intent = state.checkpoint.activeAgent;
   }
+
 
   const needsClarification = needsProductSearchClarification(ctx, parsed);
   const currentAgent = parsed.isGreeting
     ? 'greeting'
     : parsed.intent || 'unknown';
+
 
   return {
     parsedIntent: parsed,

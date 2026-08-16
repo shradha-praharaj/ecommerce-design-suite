@@ -7,3 +7,5 @@ export * from './coupons';
 export * from './coupon-redemptions';
 export * from './conversations';
 export * from './ai-preferences';
+export * from './user-behavior-events';
+export * from './user-preference-profile';
