@@ -22,7 +22,11 @@ import {
   Printer,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAddToCart, getGetCartQueryKey } from '@workspace/api-client-react';
+import {
+  customFetch,
+  useAddToCart,
+  getGetCartQueryKey,
+} from '@workspace/api-client-react';
 import { useUser } from '../context/UserContext';
 import { AppLayout } from '../components/AppLayout';
 import {
@@ -84,15 +88,11 @@ export default function OrderDetailPage() {
     error,
   } = useQuery<OrderDetailData>({
     queryKey: ['order-detail', orderId],
-    queryFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}`, {
+    queryFn: () =>
+      customFetch<OrderDetailData>(`/api/orders/${orderId}`, {
         credentials: 'include',
-      });
-      if (!res.ok) {
-        throw new Error('Failed to load order details');
-      }
-      return res.json();
-    },
+        responseType: 'json',
+      }),
     enabled: isLoggedIn && !isNaN(orderId),
   });
 
@@ -183,7 +183,10 @@ export default function OrderDetailPage() {
       return (
         <div className="max-w-4xl mx-auto py-20 px-4 text-center">
           <h2 className="text-2xl font-bold mb-3">Invalid Order ID</h2>
-          <Link href="/orders" className="text-indigo-600 font-medium hover:underline">
+          <Link
+            href="/orders"
+            className="text-indigo-600 font-medium hover:underline"
+          >
             Return to Order History
           </Link>
         </div>
@@ -287,7 +290,10 @@ export default function OrderDetailPage() {
           {/* Delivery Tracker Stepper */}
           <div className="pt-2">
             <div className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-4 flex items-center gap-2">
-              <Truck size={15} className="text-indigo-600 dark:text-indigo-400" />
+              <Truck
+                size={15}
+                className="text-indigo-600 dark:text-indigo-400"
+              />
               Package Shipment Tracker
             </div>
 
@@ -300,10 +306,10 @@ export default function OrderDetailPage() {
                       currentStage === 1
                         ? '0%'
                         : currentStage === 2
-                        ? '33%'
-                        : currentStage === 3
-                        ? '66%'
-                        : '100%',
+                          ? '33%'
+                          : currentStage === 3
+                            ? '66%'
+                            : '100%',
                   }}
                 />
               </div>
@@ -346,7 +352,10 @@ export default function OrderDetailPage() {
         {/* Ordered Product Line Items */}
         <div className="bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-neutral-200 dark:border-neutral-800 mb-8 space-y-6">
           <div className="text-sm font-extrabold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-4">
-            <Package size={18} className="text-indigo-600 dark:text-indigo-400" />
+            <Package
+              size={18}
+              className="text-indigo-600 dark:text-indigo-400"
+            />
             Ordered Items ({order.items.length})
           </div>
 
@@ -432,7 +441,10 @@ export default function OrderDetailPage() {
           {/* Shipping Address */}
           <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center gap-2 font-extrabold text-xs uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
-              <MapPin size={16} className="text-indigo-600 dark:text-indigo-400" />
+              <MapPin
+                size={16}
+                className="text-indigo-600 dark:text-indigo-400"
+              />
               Delivery Address
             </div>
             <div className="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 space-y-1">
@@ -458,12 +470,16 @@ export default function OrderDetailPage() {
           {/* Payment Method */}
           <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center gap-2 font-extrabold text-xs uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
-              <CreditCard size={16} className="text-indigo-600 dark:text-indigo-400" />
+              <CreditCard
+                size={16}
+                className="text-indigo-600 dark:text-indigo-400"
+              />
               Payment Information
             </div>
             <div className="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 space-y-2">
               <p className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
-                {(order.paymentDetails as any)?.cardNumber || 'Credit / Debit Card'}
+                {(order.paymentDetails as any)?.cardNumber ||
+                  'Credit / Debit Card'}
               </p>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 rounded-md font-bold text-[11px] border border-emerald-200 dark:border-emerald-800">
                 <CheckCircle2 size={12} /> Payment Verified & Paid
