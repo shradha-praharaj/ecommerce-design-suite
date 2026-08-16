@@ -208,6 +208,8 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
   // When set, the next user message is routed to the recommend endpoint
   const [pendingRecommendContext, setPendingRecommendContext] =
     useState<CompareData | null>(null);
+  // Context-switch guard: holds a deferred message when user has unsaved cart items
+  const [pendingContextSwitch, setPendingContextSwitch] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -588,6 +590,22 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
     }
   };
 
+  // Proceeds with context-switch: discards selected cart items and sends the deferred message
+  const handleConfirmContextSwitch = (proceed: boolean) => {
+    const deferredMsg = pendingContextSwitch;
+    setPendingContextSwitch(null);
+
+    if (!proceed || !deferredMsg) {
+      // User chose to stay — keep current selection intact, nothing changes
+      return;
+    }
+
+    // Discard pending cart selection, then proceed with the new query
+    setSelectedCartProducts([]);
+    setMessages((prev) => [...prev, { role: 'user', text: deferredMsg }]);
+    chatMutation.mutate(deferredMsg);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -612,6 +630,36 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
     if (pendingRecommendContext) {
       handleRecommend(pendingRecommendContext, userMsg);
       return;
+    }
+
+    // ── Context-switch guard ───────────────────────────────────────────────
+    // If the user has pending cart items (e.g. a PC build), and they type a
+    // completely new unrelated request — pause and ask a friendly confirmation.
+    if (selectedCartProducts.length > 0) {
+      // Detect if the new message is a clearly different topic (not a cart/checkout action)
+      const lower = userMsg.toLowerCase();
+      const isCartAction =
+        lower.includes('add to cart') ||
+        lower.includes('checkout') ||
+        lower.includes('yes') ||
+        lower.includes('yeah') ||
+        lower.includes('sure') ||
+        lower.includes('okay') ||
+        lower.includes('ok') ||
+        lower.includes('proceed') ||
+        lower.includes('confirm') ||
+        lower.includes('buy') ||
+        lower.includes('purchase') ||
+        lower.includes('no') ||
+        lower.includes('nope') ||
+        lower.includes('skip') ||
+        lower.includes('cancel');
+
+      if (!isCartAction) {
+        // Hold the new message and show a friendly confirmation prompt
+        setPendingContextSwitch(userMsg);
+        return;
+      }
     }
 
     setMessages((prev) => [...prev, { role: 'user', text: userMsg }]);
@@ -1328,71 +1376,75 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                                           </p>
                                         )}
                                       </div>
-
-                                      {/* Price Section */}
-                                      <div className="flex items-baseline gap-2 mt-1.5">
-                                        <span className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 flex items-center">
-                                          <IndianRupee size={12} />
-                                          {Math.round(currPrice).toLocaleString('en-IN')}
-                                        </span>
-                                        {origPrice && origPrice > currPrice && (
-                                          <span className="text-[11px] text-neutral-400 line-through">
-                                            ₹{Math.round(origPrice).toLocaleString('en-IN')}
-                                          </span>
-                                        )}
-                                      </div>
                                     </div>
                                   </div>
 
-                                  {/* Action Bar */}
-                                  <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-neutral-100 dark:border-neutral-700/60">
-                                    <button
-                                      onClick={() => handleToggleCompare(p)}
-                                      disabled={!isInCompare && !canAdd}
-                                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                                        isInCompare
-                                          ? 'bg-indigo-600 text-white shadow-sm'
-                                          : canAdd
-                                            ? 'bg-neutral-100 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                                            : 'opacity-40 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800 text-neutral-400'
-                                      }`}
-                                      title={
-                                        isInCompare
-                                          ? 'Remove from compare'
-                                          : canAdd
-                                            ? 'Add to compare'
-                                            : 'Max 3 products reached'
-                                      }
-                                    >
-                                      <GitCompareArrows size={12} />
-                                      <span>{isInCompare ? 'Comparing' : 'Compare'}</span>
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleToggleCartSelection(p)}
-                                      disabled={addToCart.isPending}
-                                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-                                        isSelected
-                                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 active:scale-[0.98]'
-                                      }`}
-                                    >
-                                      {isSelected ? (
-                                        <>
-                                          <Check size={13} />
-                                          <span>Selected for Cart</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ShoppingCart size={13} />
-                                          <span>Add to Cart</span>
-                                        </>
+                                  {/* Price & Action Row (Right-aligned buttons) */}
+                                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700/60">
+                                    {/* Price on Left */}
+                                    <div className="flex items-baseline gap-1.5 shrink-0">
+                                      <span className="text-sm font-extrabold text-neutral-900 dark:text-neutral-50 flex items-center">
+                                        <IndianRupee size={12} />
+                                        {Math.round(currPrice).toLocaleString('en-IN')}
+                                      </span>
+                                      {origPrice && origPrice > currPrice && (
+                                        <span className="text-[10px] text-neutral-400 line-through">
+                                          ₹{Math.round(origPrice).toLocaleString('en-IN')}
+                                        </span>
                                       )}
-                                    </button>
+                                    </div>
+
+                                    {/* Action Buttons on Right */}
+                                    <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                                      <button
+                                        onClick={() => handleToggleCompare(p)}
+                                        disabled={!isInCompare && !canAdd}
+                                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                                          isInCompare
+                                            ? 'bg-indigo-600 text-white shadow-sm'
+                                            : canAdd
+                                              ? 'bg-neutral-100 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                                              : 'opacity-40 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800 text-neutral-400'
+                                        }`}
+                                        title={
+                                          isInCompare
+                                            ? 'Remove from compare'
+                                            : canAdd
+                                              ? 'Add to compare'
+                                              : 'Max 3 products reached'
+                                        }
+                                      >
+                                        <GitCompareArrows size={12} />
+                                        <span>{isInCompare ? 'Comparing' : 'Compare'}</span>
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleToggleCartSelection(p)}
+                                        disabled={addToCart.isPending}
+                                        className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95 ${
+                                          isSelected
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
+                                        }`}
+                                      >
+                                        {isSelected ? (
+                                          <>
+                                            <Check size={13} />
+                                            <span>Added</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ShoppingCart size={13} />
+                                            <span>Add to Cart</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               );
                             })}
+
                           </div>
                         )}
 
@@ -1453,10 +1505,59 @@ export function AIChatbot({ variant = 'header' }: AIChatbotProps) {
                   })}
                 </AnimatePresence>
 
+                {/* Context-switch guard: friendly confirmation when user has unsaved cart items */}
+                <AnimatePresence>
+                  {pendingContextSwitch && (
+                    <motion.div
+                      className="mx-4 my-2 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-700/60 shadow-sm"
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-lg leading-none mt-0.5">🛒</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 leading-snug">
+                            You have {selectedCartProducts.length} item{selectedCartProducts.length > 1 ? 's' : ''} ready to add to cart!
+                          </p>
+                          <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1 leading-snug">
+                            Would you like to add them before moving on to{' '}
+                            <span className="font-semibold italic">"{pendingContextSwitch}"</span>?
+                          </p>
+                          <div className="flex items-center gap-2 mt-2.5">
+                            <button
+                              onClick={handleAddSelectedToCart}
+                              disabled={addToCart.isPending}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-all active:scale-95 shadow-sm"
+                            >
+                              <ShoppingCart size={12} />
+                              {addToCart.isPending ? 'Adding…' : 'Yes, add to cart first'}
+                            </button>
+                            <button
+                              onClick={() => handleConfirmContextSwitch(true)}
+                              className="px-3 py-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 text-xs font-medium transition-all active:scale-95"
+                            >
+                              No, skip & continue
+                            </button>
+                            <button
+                              onClick={() => handleConfirmContextSwitch(false)}
+                              className="text-[11px] text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors px-1"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Thinking indicator */}
                 <AnimatePresence>
                   {(chatMutation.isPending || compareLoading) &&
                     messages.length > 0 && (
+
                       <motion.div
                         className="flex items-start gap-2"
                         initial={{ opacity: 0, y: 8 }}
